@@ -220,10 +220,19 @@
     Promise.all([
       fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv").then(res => {return res.text()}),
       fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv").then(res => {return res.text()}),
-      ])
+      fetch("https://raw.githubusercontent.com/AnthonyEbert/COVID-19_ISO-3166/master/JohnsHopkins-to-A3.csv").then(res => {return res.text()}),
+
+    ])
     .then(data => {
       dataConfirmed = data[0].replace("Korea, South", "South Korea").split('\n');
       dataDeaths = data[1].replace("Korea, South", "South Korea").split('\n')
+      dataCountryLookup = data[2].split('\n');
+      countryLookup = {};
+
+      for (var i=1; i < dataCountryLookup.length; i++) {
+        d_ = dataCountryLookup[i].split(',');
+        countryLookup[d_[0]] = d_[1];
+      }
 
       colDateStart = 4;
 
@@ -241,24 +250,28 @@
       for (var i=1; i<dataConfirmed.length; i++) {
         rowConfirmed_ = dataConfirmed[i].split(",")
         rowDeaths_ = dataDeaths[i].split(",")
+        var county = false; 
         
         // Remove States/Towns
         if(rowConfirmed_.length == numCols + 1) {
-          continue;
           rowConfirmed_.shift();
           rowDeaths_.shift();
+          county = true;
         }
 
         if (!rowConfirmed_[1]) {
           continue;
-        }
+        } 
 
 
-        country = rowConfirmed_[1].replace(/[|&;$%@"<>()+,]/g, "");
+        country = rowConfirmed_[1].replace(/[|&;$%@"<>*()+,]/g, "");
         
 
         if (country in countryConfirmedData) {
           for (var ee=colDateStart; ee<numCols; ee++) {
+            if (county) {
+              if (ee > 51) {continue;}
+            }
             countryConfirmedData[country][ee-colDateStart] = Number(countryConfirmedData[country][ee-colDateStart]) + Number(rowConfirmed_[ee])
           }
         } else {
@@ -267,6 +280,9 @@
 
         if (country in countryDeathData) {
           for (var ee=colDateStart; ee<numCols; ee++) {
+            if (county) {
+              if (ee > 51) {continue;}
+            }
             countryDeathData[country][ee-colDateStart] = Number(countryDeathData[country][ee-colDateStart]) + Number(rowDeaths_[ee])
           }
         } else {
@@ -385,8 +401,14 @@
 
         var currentNum = d[d.length-1];
         if (currentNum > 5) {
-          $("#countryplots").append(`<div id="plot_${c.replace(/ /g,'')}"><h6 class="text-center mb-0">${c} <small>(n=${currentNum})</small></h6></div>`)
+          $("#countryplots").append(`<div id="plot_${c.replace(/ /g,'')}"><h6 class="text-center mb-0">${c} <small>(n=${currentNum})</small><span id="${c}flag"</h6></div>`)
           plotDiv = $(`#plot_${c.replace(/ /g,'')}`)[0]
+
+          var countryCode = countryLookup[c]
+          if (countryCode) {
+            var flag = countryCode.toUpperCase().replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))
+            $(`#${c}flag`).append(flag);
+          }
 
           data = [dateList, d, dd, forecastCases]
           
@@ -436,5 +458,6 @@
     }).then(d=> {
       $("#totals").append(`Today (est): <strong>${Number(totalForecast[0]).toLocaleString()}</strong>. +7days <strong>${Number(totalForecast[8]).toLocaleString()}</strong>`)
     }) 
+
 
 
