@@ -404,11 +404,11 @@
           $("#countryplots").append(`<div id="plot_${c.replace(/ /g,'')}"><h6 class="text-center mb-0">${c} <small>(n=${currentNum})</small><span id="${c}flag"</h6></div>`)
           plotDiv = $(`#plot_${c.replace(/ /g,'')}`)[0]
 
-          var countryCode = countryLookup[c]
-          if (countryCode) {
-            var flag = countryCode.toUpperCase().replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))
-            $(`#${c}flag`).append(flag);
-          }
+          //var countryCode = countryLookup[c]
+          //if (countryCode) {
+          //  var flag = countryCode.toUpperCase().replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))
+          //  $(`#${c}flag`).append(flag);
+          //}
 
           data = [dateList, d, dd, forecastCases]
           
