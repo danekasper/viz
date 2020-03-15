@@ -47,10 +47,17 @@
           const { left, top, idx } = u.cursor;
           legendEl = u.root.querySelector(".legend");
           const series_ = legendEl.querySelectorAll(".series");
+          hideforecast = false;
           for (var i=1; i< series_.length; i++) {
+            if (hideforecast && i == 4) { 
+              series_[i].style.display = "none";
+              continue;
+            }
+
             if (isNaN(u.data[i][idx]) || u.data[i][idx] == null) {
               series_[i].style.display = "none";
             } else {
+              hideforecast = true;
               series_[i].style.display = "block";
             }
           }
@@ -149,6 +156,9 @@
             "confirmed" : {
               auto:true,
             },
+            "casesperday" : {
+              auto:true,
+            },
             "deaths" : {
               auto:true,
               range: (u, dataMin, dataMax) => {
@@ -172,7 +182,7 @@
             },
             {
               scale: 'confirmed',
-              label: 'Confirmed cases',
+              label: 'Cumulative cases',
               labelSize: 30,
               size: 60,
               side: 3,
@@ -186,12 +196,21 @@
               side: 1,
               grid: {show: false},
               stroke: "red",
+            },            
+            {
+              scale: 'casesperday',
+              label: 'Cases per Day',
+              labelSize: 20,
+              size: 50,
+              side: 1,
+              grid: {show: false},
+              stroke: "blue",
             },
           ],
         };
       }
 
-    function newSeries(opts_, x, scale_ = "confirmed", stroke_ = "black", dash_ = [1,0], show_=true) {
+    function newSeries(opts_, x, scale_ = "confirmed", stroke_ = "black", dash_=[1,0], show_=true, width_=2) {
       opts_.series.push({
               show: show_,
               spanGaps: true,
@@ -199,7 +218,7 @@
               value: (self, rawValue) => Number(rawValue).toLocaleString(),
               scale: scale_,
               stroke: stroke_,
-              width: 2,
+              width: width_,
               points: {show: false},
               dash: dash_,
             })
@@ -214,6 +233,7 @@
     var totalForecast = new Array(forecastDays+1).fill(0);
 
     var countryConfirmedData = {};
+    var countryConfirmedPerDayData = {};
     var countryDeathData = {};
     var countryNormalised = [];
 
@@ -298,6 +318,12 @@
           continue;
         }
         totals.push({country: c, total:Number(d[d.length-1])})
+
+        countryConfirmedPerDayData[c] = [];
+        for (var ee=0; ee<numCols-colDateStart; ee++) {
+          countryConfirmedPerDayData[c][ee] = Number(countryConfirmedData[c][ee]) - (ee == 0 ? 0 : Number(countryConfirmedData[c][ee - 1]))
+        }
+
       }
 
       //Sort totals
@@ -306,11 +332,13 @@
       });
 
       // GLOBAL PLOT
-      $("#globalPlot").append(`<h5>Top 10 countries by number of confirmed cases (excl China)</h5>`)
+      $("#globalPlot").append(`<h5>Top 10 countries by number of confirmed cases</h5>`)
       plotDiv = $(`#globalPlot`)[0]
       optsGlobal = getOpts(750, 400);
       delete optsGlobal.axes[2];
+      delete optsGlobal.axes[3];
       delete optsGlobal.scales['deaths'];
+      delete optsGlobal.scales['casesperday'];
       optsGlobal.lock = true;
       optsGlobal.cursor = {
           focus: {
@@ -321,12 +349,11 @@
       labels = []
       data = [dateList.slice(0, dateList.length-forecastDays+1)]
 
-      for (var i=1; i< 11; i++) {
-
+      for (var i=0; i< 10; i++) {
         c = totals[i].country
         labels.push(c);
         data.push(countryConfirmedData[c]);
-        optsGlobal = newSeries(optsGlobal, c, "confirmed", colors[i-1]);
+        optsGlobal = newSeries(optsGlobal, c, "confirmed", colors[i-1],[1,0], c != "China");
       }
 
       //optsGlobal.legend['show'] = false;
@@ -347,12 +374,13 @@
         c = totals[i].country;
         d = countryConfirmedData[c];
         dd = countryDeathData[c]
+        ddd = countryConfirmedPerDayData[c];
 
         // Normalise
         var ii = 0;
         var d_norm = [];
         for (var ee=0; ee<d.length-1; ee++) {
-          if (d[ee] > 50) {
+          if (d[ee] > 99) {
             d_norm.push(Number(d[ee]))
           }
         }
@@ -369,8 +397,10 @@
         optsCountry = getOpts();
         optsCountry.plugins.push(legendAsTooltipPlugin());
 
-        optsCountry = newSeries(optsCountry, c + " Confirmed")
-        optsCountry = newSeries(optsCountry, c + " Deaths", "deaths", "red")
+        optsCountry = newSeries(optsCountry, c + " Confirmed");
+        optsCountry = newSeries(optsCountry, c + " Deaths", "deaths", "red");
+        optsCountry = newSeries(optsCountry, "Cases per day", "casesperday", "blue", [1,0], true, 1);
+
         if (Number(dd[dd.length-1]) == 0) {
          // optsCountry.scales.Deaths.range = [0,1];
          // optsCountry.scales.Deaths.auto = false;
@@ -399,7 +429,7 @@
           };
         }
 
-        var currentNum = d[d.length-1];
+        var currentNum = Number(d[d.length-1]);
         if (currentNum > 5) {
           $("#countryplots").append(`<div id="plot_${c.replace(/ /g,'')}"><h6 class="text-center mb-0">${c} <small>(n=${currentNum})</small><span id="${c}flag"</h6></div>`)
           plotDiv = $(`#plot_${c.replace(/ /g,'')}`)[0]
@@ -410,7 +440,7 @@
           //  $(`#${c}flag`).append(flag);
           //}
 
-          data = [dateList, d, dd, forecastCases]
+          data = [dateList, d, dd, ddd, forecastCases]
           
           let country_uplot = new uPlot(optsCountry, data, plotDiv);
         }
@@ -420,14 +450,18 @@
 
       //Normalised plot
       // GLOBAL PLOT
-      $("#globalPlot").append(`<p></p><hr><div id="plot_norm"><h5>Normalised infection. Days post 50 cases</h5></div>`)
+      $("#globalPlot").append(`<p></p><hr><div id="plot_norm"><h5>Cumulative cases per country in days since first reached 100 cases</h5></div>`)
 
       plotDiv = $(`#plot_norm`)[0]
-      optsGlobal2 = getOpts(750, 400);
+      optsGlobal2 = getOpts(750, 750);
       delete optsGlobal2.axes[2];
+      delete optsGlobal2.axes[3];
       delete optsGlobal2.scales['deaths'];
+      delete optsGlobal2.scales['casesperday'];
+
 
       optsGlobal2.scales['x'].time = false;
+      optsGlobal2.axes[0].label = "Days since 100 cases"
       optsGlobal2.lock = true;
       optsGlobal2.cursor = {
           focus: {
@@ -441,14 +475,14 @@
       //optsGlobal2.plugins.push(legendAsTooltipPlugin());
       data = [Array.from(Array(50).keys())]
 
-      for (var i=1; i< countryNormalised.length-1; i++) {
+      for (var i=0; i< countryNormalised.length; i++) {
         c = countryNormalised[i].country  
         data.push(countryNormalised[i].c_norm) //.map(Math.log10));
-        optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i-1], [1,0], true);
+        optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], i < 11 && c != "China");
       }
 
       //optsGlobal2.legend['show'] = false;
-      optsGlobal2.series[0] = {label: 'Days since 50'}
+      optsGlobal2.series[0] = {label: 'Days since 100 cases'}
       var uplot = new uPlot(optsGlobal2, data, plotDiv);
       plotDiv = $(`#plot_norm .uplot`)[0]
       $(plotDiv).css("width", "750px")
@@ -458,6 +492,5 @@
     }).then(d=> {
       $("#totals").append(`Today (est): <strong>${Number(totalForecast[0]).toLocaleString()}</strong>. +7days <strong>${Number(totalForecast[8]).toLocaleString()}</strong>`)
     }) 
-
 
 
