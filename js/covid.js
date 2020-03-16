@@ -308,7 +308,20 @@
         } else {
           countryDeathData[country] = rowDeaths_.slice(colDateStart, numCols)
         }
+      }
 
+      // Fix Errors 50 = March 12
+      try {
+        countryConfirmedData['Italy'][50] = 15133;
+        countryConfirmedData['Spain'][50] = 3146;
+        countryConfirmedData['Netherlands'][50] = 614;
+        countryConfirmedData['United Kingdom'][50] = 594;
+        countryConfirmedData['Belgium'][50] = 314;
+        countryConfirmedData['Switzerland'][50] = 858;
+        countryConfirmedData['Japan'][50] = 675;
+        countryConfirmedData['France'][50] = 2860;
+      } catch (error) {
+        console.log("Error Fixing 12 March Data")
       }
 
       totals = [];
@@ -394,7 +407,7 @@
           //continue;
         }
 
-        optsCountry = getOpts();
+        optsCountry = getOpts(550,300);
         optsCountry.plugins.push(legendAsTooltipPlugin());
 
         optsCountry = newSeries(optsCountry, c + " Confirmed");
@@ -450,7 +463,7 @@
 
       //Normalised plot
       // GLOBAL PLOT
-      $("#globalPlot").append(`<p></p><hr><div id="plot_norm"><h5>Cumulative cases per country in days since first reached 100 cases</h5></div>`)
+      $("#globalPlot").append(`<p></p><hr><div id="plot_norm"><h5>Cumulative cases per country in days since first reached 100th case</h5></div>`)
 
       plotDiv = $(`#plot_norm`)[0]
       optsGlobal2 = getOpts(750, 750);
@@ -461,7 +474,7 @@
 
 
       optsGlobal2.scales['x'].time = false;
-      optsGlobal2.axes[0].label = "Days since 100 cases"
+      optsGlobal2.axes[0].label = "Days since 100th case"
       optsGlobal2.lock = true;
       optsGlobal2.cursor = {
           focus: {
@@ -482,7 +495,7 @@
       }
 
       //optsGlobal2.legend['show'] = false;
-      optsGlobal2.series[0] = {label: 'Days since 100 cases'}
+      optsGlobal2.series[0] = {label: 'Days since 100th case'}
       var uplot = new uPlot(optsGlobal2, data, plotDiv);
       plotDiv = $(`#plot_norm .uplot`)[0]
       $(plotDiv).css("width", "750px")
