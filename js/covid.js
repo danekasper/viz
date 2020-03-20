@@ -165,7 +165,7 @@
                 let [min, max] = uPlot.rangeNum(dataMin, dataMax, 0.2, true);
                 return [
                   Math.min(0, dataMin),
-                  Math.max(1, dataMax*1.2),
+                  Math.max(1, dataMax*2),
                 ];
               }
             }
@@ -284,7 +284,7 @@
         } 
 
 
-        country = rowConfirmed_[1].replace(/[|&;$%@"<>*()+,]/g, "");
+        country = rowConfirmed_[1].replace(/[|&;$'%@"<>*()+,]/g, "");
         
 
         if (country in countryConfirmedData) {
@@ -316,10 +316,16 @@
         countryConfirmedData['Spain'][50] = 3146;
         countryConfirmedData['Netherlands'][50] = 614;
         countryConfirmedData['United Kingdom'][50] = 594;
+        countryConfirmedData['United Kingdom'][53] = 1395;
         countryConfirmedData['Belgium'][50] = 314;
         countryConfirmedData['Switzerland'][50] = 858;
+        countryConfirmedData['Switzerland'][53] = 1600;
         countryConfirmedData['Japan'][50] = 675;
         countryConfirmedData['France'][50] = 2860;
+        countryConfirmedData['France'][53] = 5380;
+        countryConfirmedData['Australia'][50] = 140;
+        countryConfirmedData['Germany'][50] = 2369;
+
       } catch (error) {
         console.log("Error Fixing 12 March Data")
       }
@@ -491,7 +497,7 @@
       for (var i=0; i< countryNormalised.length; i++) {
         c = countryNormalised[i].country  
         data.push(countryNormalised[i].c_norm) //.map(Math.log10));
-        optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], i < 11 && c != "China");
+        optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], (i < 5 && c != "China") || c == "Australia" || c == "United Kingdom");
       }
 
       //optsGlobal2.legend['show'] = false;
