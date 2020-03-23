@@ -73,51 +73,38 @@
     };
   } 
 
-  function seriesPointsPlugin({ spikes = 8, outerRadius = 2, innerRadius = 2} = {}) {
-    outerRadius *= devicePixelRatio;
-    innerRadius *= devicePixelRatio;
-
-    function drawStar(ctx, cx, cy) {
-      let rot = Math.PI / 2 * 3;
-      let x = cx;
-      let y = cy;
-      let step = Math.PI / spikes;
-
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - outerRadius);
-
-      for (let i = 0; i < spikes; i++) {
-        x = cx + Math.cos(rot) * outerRadius;
-        y = cy + Math.sin(rot) * outerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-
-        x = cx + Math.cos(rot) * innerRadius;
-        y = cy + Math.sin(rot) * innerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-      }
-
-      ctx.lineTo(cx, cy - outerRadius);
-      ctx.closePath();
+  function seriesPointsPlugin({ outerRadius = 2, innerRadius = 2} = {}) {
+ 
+    function addLabel(ctx, cx, cy, series_label) {
+      ctx.font = '12px serif';
+      ctx.textAlign = 'start'
+      ctx.fillText(series_label , cx+7, cy);
     }
 
-    function drawPointsAsStars(u, i) {
+    function drawPoint(ctx, cx, cy) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 4, 0, Math.PI*2, true);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawFinalPoint(u, i) {
       let { ctx } = u;
       let { stroke, scale } = u.series[i];
 
-      ctx.fillStyle = "grey";
+      ctx.fillStyle = u.series[i].stroke;
+      
+      //let j = u.series[i].idxs[0]; // all points
+      //let j = u.series[i].idxs[1]; // final
+      let j = u.data[i].length-1;
 
-      let j = u.idxs[0];
-
-      while (j < u.idxs[1] + 1) {
+      while (j < u.series[0].idxs[1] + 1) {
         let val = u.data[i][j];
         let cx = Math.round(u.valToPos(u.data[0][j], 'x', true));
         let cy = Math.round(u.valToPos(val, scale, true));
-        if (j > 43) {
-          drawStar(ctx, cx, cy);
-          ctx.fill();
-        }
+        //drawStar(ctx, cx, cy);
+        drawPoint(ctx, cx,cy);
+        addLabel(ctx, cx, cy, u.series[i].label + ' (n=' + Number(val) +')');
         j++;
       };
     }
@@ -128,11 +115,12 @@
 
     return {
       opts: (u, opts) => {
+        console.log(u);
         opts.series.forEach((s, i) => {
           if (i > 0) {
             uPlot.assign(s, {
               points: {
-                show: drawPointsAsStars,
+                show: drawFinalPoint,
               }
             });
           }
@@ -277,7 +265,7 @@ Promise.all([
     var county = false; 
 
     if (rowConfirmed_[1] == 'Australia' && rowConfirmed_[0] != 'From Diamond Princess') {
-      AustraliaConfirmed[rowConfirmed_[0]] = rowConfirmed_.slice(colDateStart, numCols);
+      AustraliaConfirmed[rowConfirmed_[0].replace("Australian Capital Territory", "ACT")] = rowConfirmed_.slice(colDateStart, numCols);
       AustraliaDeaths[rowConfirmed_[0]] = rowDeaths_.slice(colDateStart, numCols);
     }
     
@@ -375,7 +363,7 @@ Promise.all([
       }
     };
   labels = []
-  data = [dateList.slice(0, dateList.length-forecastDays+1)]
+  data = [dateList.slice(0, dateList.length-forecastDays+2)]
 
   for (var i=0; i< 10; i++) {
     c = totals[i].country
@@ -396,6 +384,9 @@ Promise.all([
   $("#auPlot").append(`<h5>Australia</h5>`)
   plotDiv = $(`#auPlot`)[0]
   optsAu = getOpts(750, 400);
+  optsAu.gutters = {y:0, x:200}
+
+  optsAu.plugins.push(seriesPointsPlugin());
   delete optsAu.axes[2];
   delete optsAu.axes[3];
   delete optsAu.scales['deaths'];
@@ -408,7 +399,7 @@ Promise.all([
       }
     };
   labels = []
-  data = [dateList.slice(0, dateList.length-forecastDays+1)]
+  data = [dateList.slice(0, dateList.length-forecastDays+2)]
 
   i = 0;
   for (c in AustraliaConfirmed) {
@@ -420,7 +411,7 @@ Promise.all([
 
   //optsAu.legend['show'] = false;
   var auplot = new uPlot(optsAu, data, plotDiv);
-
+  
   $("#auPlot .legend").removeClass("inline")
   $("#auPlot .legend").css("text-align", "left")
 
@@ -514,10 +505,13 @@ Promise.all([
 
   plotDiv = $(`#plot_norm`)[0]
   optsGlobal2 = getOpts(750, 750);
+  optsGlobal2.height = 750;
   delete optsGlobal2.axes[2];
   delete optsGlobal2.axes[3];
   delete optsGlobal2.scales['deaths'];
   delete optsGlobal2.scales['casesperday'];
+
+  optsGlobal2.plugins.push(seriesPointsPlugin());
 
 
   optsGlobal2.scales['x'].time = false;
@@ -538,7 +532,7 @@ Promise.all([
   for (var i=0; i< Math.min(30,countryNormalised.length); i++) {
     c = countryNormalised[i].country  
     data.push(countryNormalised[i].c_norm) //.map(Math.log10));
-    optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], (i < 5 && c != "China") || c == "Australia" || c == "United Kingdom");
+    optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], (c == "Italy" || c == "Germany" || c == "South Korea" || c == "US" || c == "Australia" || c == "United Kingdom"));
   }
 
   //optsGlobal2.legend['show'] = false;
