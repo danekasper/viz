@@ -76,14 +76,15 @@
   function seriesPointsPlugin({ outerRadius = 2, innerRadius = 2} = {}) {
  
     function addLabel(ctx, cx, cy, series_label) {
-      ctx.font = '1em serif';
+      ctx.font = screen.width > 500 ? '1em serif' : '3em serif';
       ctx.textAlign = 'start'
       ctx.fillText(series_label , cx+7, cy);
     }
 
-    function drawPoint(ctx, cx, cy) {
+    function drawPoint(ctx, cx, cy, s) {
       ctx.beginPath();
-      ctx.arc(cx, cy, 4, 0, Math.PI*2, true);
+      ctx.arc(cx, cy, screen.width > 500 ? 4 : 8, 0, Math.PI*2, true);
+      ctx.globalAlpha = s.alpha;
       ctx.closePath();
       ctx.fill();
     }
@@ -103,10 +104,11 @@
         let cx = Math.round(u.valToPos(u.data[0][j], 'x', true));
         let cy = Math.round(u.valToPos(val, scale, true));
         //drawStar(ctx, cx, cy);
-        drawPoint(ctx, cx,cy);
-        addLabel(ctx, cx, cy, u.series[i].label + ' (n=' + Number(val) +')');
+        drawPoint(ctx, cx, cy, u.series[i]);
+        addLabel(ctx, cx, cy, u.series[i].label + ' (n=' + Number(val).toLocaleString() +')');
         j++;
       };
+      ctx.globalAlpha = 1;
     }
 
     return {
@@ -210,7 +212,7 @@ function newSeries(opts_, x, scale_ = "confirmed", stroke_ = "black", dash_=[1,0
 }
 
 colors = ['black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
-        'black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
+        '#a3c56e','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
         'black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999'];
 var forecastIdx;
 var forecastDays = 10
@@ -490,7 +492,7 @@ Promise.all([
 
     var currentNum = Number(d[d.length-1]);
     if (currentNum > 5) {
-      $("#countryplots").append(`<div id="plot_${c.replace(/ /g,'')}"><h6 class="text-center mb-0">${c} <small>(n=${currentNum})</small><span id="${c}flag"</h6></div>`)
+      $("#countryplots").append(`<div id="plot_${c.replace(/ /g,'')}"><h6 class="text-center mb-0">${c} <small>(n=${Number(currentNum).toLocaleString()})</small><span id="${c}flag"</h6></div>`)
       plotDiv = $(`#plot_${c.replace(/ /g,'')}`)[0]
 
       //var countryCode = countryLookup[c]
@@ -509,9 +511,9 @@ Promise.all([
 
   //Normalised plot
   // GLOBAL PLOT
-  $("#globalPlot").append(`<p></p><hr><div id="plot_norm"><h5>Cumulative cases per country in days since first reached 100th case</h5></div>`)
+  $("#normPlot").append(`<h5>Cumulative cases per country in days since first reached 100th case</h5>`)
 
-  plotDiv = $(`#plot_norm`)[0]
+  plotDiv = $(`#normPlot`)[0]
   optsGlobal2 = getOpts(750, 750);
   optsGlobal2.height = 750;
   delete optsGlobal2.axes[2];
@@ -546,10 +548,8 @@ Promise.all([
   //optsGlobal2.legend['show'] = false;
   optsGlobal2.series[0] = {label: 'Days since 100th case'}
   var uplot = new uPlot(optsGlobal2, data, plotDiv);
-  plotDiv = $(`#plot_norm .uplot`)[0]
-  $(plotDiv).css("width", "750px")
-
-  
+  plotDiv = $(`#normPlot .uplot .legend`)[0]
+  $(plotDiv).css("width", screen.width > 750 ? "750px" : "500px") 
 
 }).then(d=> {
   $("#totals").append(`Today (est): <strong>${Number(totalForecast[0]).toLocaleString()}</strong>. +7days <strong>${Number(totalForecast[8]).toLocaleString()}</strong>`)
