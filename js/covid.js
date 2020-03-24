@@ -440,7 +440,7 @@ Promise.all([
     // Normalise
     var ii = 0;
     var d_norm = [];
-    for (var ee=0; ee<d.length-1; ee++) {
+    for (var ee=0; ee<d.length; ee++) {
       if (d[ee] > 99) {
         d_norm.push(Number(d[ee]))
       }
@@ -549,7 +549,7 @@ Promise.all([
   optsGlobal2.series[0] = {label: 'Days since 100th case'}
   var uplot = new uPlot(optsGlobal2, data, plotDiv);
   plotDiv = $(`#normPlot .uplot .legend`)[0]
-  $(plotDiv).css("width", screen.width > 750 ? "750px" : "500px") 
+  $(plotDiv).css("width", "500px") 
 
 }).then(d=> {
   $("#totals").append(`Today (est): <strong>${Number(totalForecast[0]).toLocaleString()}</strong>. +7days <strong>${Number(totalForecast[8]).toLocaleString()}</strong>`)
