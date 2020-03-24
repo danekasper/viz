@@ -76,7 +76,7 @@
   function seriesPointsPlugin({ outerRadius = 2, innerRadius = 2} = {}) {
  
     function addLabel(ctx, cx, cy, series_label) {
-      ctx.font = '12px serif';
+      ctx.font = '1em serif';
       ctx.textAlign = 'start'
       ctx.fillText(series_label , cx+7, cy);
     }
@@ -109,13 +109,8 @@
       };
     }
 
-    function test(u,i) {
-      console.log(u)
-    }
-
     return {
       opts: (u, opts) => {
-        console.log(u);
         opts.series.forEach((s, i) => {
           if (i > 0) {
             uPlot.assign(s, {
@@ -227,10 +222,10 @@ var countryDeathData = {};
 var countryNormalised = [];
 
 Promise.all([
-  fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv").then(res => {return res.text()}),
-  fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv").then(res => {return res.text()}),
+  fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv").then(res => {return res.text()}),
+  fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv").then(res => {return res.text()}),
   fetch("https://raw.githubusercontent.com/AnthonyEbert/COVID-19_ISO-3166/master/JohnsHopkins-to-A3.csv").then(res => {return res.text()}),
-
+  fetch("../data/country-lockdown.csv").then(res => {return res.text()}),
 ])
 .then(data => {
   dataConfirmed = data[0].replace("Korea, South", "South Korea").split('\n');
@@ -238,9 +233,22 @@ Promise.all([
   dataCountryLookup = data[2].split('\n');
   countryLookup = {};
 
+
   AustraliaConfirmed = {};
   AustraliaDeaths = {};
+  dataCountryLockdown = data[3].replace("Korea, South", "South Korea").split('\n');
+  countryLockdown = {};
 
+  // Country Lockdown
+  for (var i=1; i<dataCountryLockdown.length; i++) {
+    d_ = dataCountryLockdown[i].split(',');
+    if (d_[1] && d_[1].length < 2) {
+      continue;
+    }
+    countryLockdown[d_[0].replace(/[|&;$'%@"<>*()+,]/g, "")] = d_[1];
+  }
+
+  // Country Flag Lookups
   for (var i=1; i < dataCountryLookup.length; i++) {
     d_ = dataCountryLookup[i].split(',');
     countryLookup[d_[0]] = d_[1];
