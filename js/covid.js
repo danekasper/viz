@@ -1,3 +1,13 @@
+colors = ['black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
+        '#a3c56e','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
+        'black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999'];
+var forecastIdx;
+var forecastDays = 10
+var totalForecast = new Array(forecastDays+1).fill(0);
+
+var countryPlots = {};
+var dangerList = []
+let isMobile = window.matchMedia("only screen and (max-width: 760px)").matches;
 
   // converts the legend into a simple tooltip
   function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black" } } = {}) {
@@ -83,7 +93,7 @@
 
     function drawPoint(ctx, cx, cy, s) {
       ctx.beginPath();
-      ctx.arc(cx, cy, screen.width > 500 ? 4 : 8, 0, Math.PI*2, true);
+      ctx.arc(cx, cy, screen.width > 500 ? 4 : 6, 0, Math.PI*2, true);
       ctx.globalAlpha = s.alpha;
       ctx.closePath();
       ctx.fill();
@@ -126,10 +136,11 @@
     }
   }
 
-  function getOpts(width_ = 500, height_ = 250) {
+  function getOpts(title_, width_ = 500, height_ = 250) {
     return {
-      width: screen.width > 500 ? width_ : 500,
-      height: screen.width > 500 ? height_ : 250,
+      title: title_,
+      width: width_, //screen.width > 500 ? width_ : 500,
+      height: height_, //screen.width > 500 ? height_ : 250,
       legend: {
         show: true,
       },
@@ -211,18 +222,6 @@ function newSeries(opts_, x, scale_ = "confirmed", stroke_ = "black", dash_=[1,0
   return opts_;
 }
 
-colors = ['black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
-        '#a3c56e','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
-        'black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999'];
-var forecastIdx;
-var forecastDays = 10
-var totalForecast = new Array(forecastDays+1).fill(0);
-
-var countryConfirmedData = {};
-var countryConfirmedPerDayData = {};
-var countryDeathData = {};
-var countryNormalised = [];
-
 Promise.all([
   fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv").then(res => {return res.text()}),
   fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv").then(res => {return res.text()}),
@@ -230,16 +229,99 @@ Promise.all([
   fetch("../data/country-lockdown.csv").then(res => {return res.text()}),
 ])
 .then(data => {
-  dataConfirmed = data[0].replace("Korea, South", "South Korea").split('\n');
-  dataDeaths = data[1].replace("Korea, South", "South Korea").split('\n')
-  dataCountryLookup = data[2].split('\n');
-  countryLookup = {};
+
+  let ret = prepPlotData(data);
+  setTimeout(() => makePlotNormalised(ret));
+
+}).then(d=> {
+  $("#totals").append(`Today (est): <strong>${Number(totalForecast[0]).toLocaleString()}</strong>. +7days <strong>${Number(totalForecast[8]).toLocaleString()}</strong>`)
+  
+  dangerList.sort().reverse();
+  for (var i=0; i<dangerList.length && i <10; i++) {
+    $("#atrisk").append(`${dangerList[i][1]} - ${(dangerList[i][0] * 100).toFixed()}%<br>`)
+  }
+ 
+  $('#countryplots').before(`<div>
+    <h5 class="title">Country cumulative cases, deaths and cases per day plots </h5> 
+    <small> The top few countries are shown, select from alphabetical or total lists to view other countries</small>
+    <br>  
+      <form-label>Ordered alphabetically: </form-label>
+      <select onchange="viewCountryPlot(this)" id="selectCountry">
+        <option value=-1>Select country chart to view</option>
+      </select>
+      <br>
+      <form-label>Ordered by total: </form-label>
+      <select onchange="viewCountryPlot(this)" id="selectCountryTotal">
+        <option value=-1>Select country chart to view</option>
+      </select>
+      </div>
+      <hr>`
+    )
+    createDropDownList()
 
 
-  AustraliaConfirmed = {};
-  AustraliaDeaths = {};
-  dataCountryLockdown = data[3].replace("Korea, South", "South Korea").split('\n');
-  countryLockdown = {};
+}) 
+
+function createDropDownList() {
+  var select = document.getElementById("selectCountry"); 
+  var select2 = document.getElementById("selectCountryTotal"); 
+
+  var keys = Object.keys(countryPlots)
+  for (var i=0; i < keys.length; i++) {
+    var el = document.createElement("option");
+    var number = countryPlots[keys[i]][3];
+    el.textContent = `${keys[i]} (n=${number})`;
+    el.value = keys[i];
+    select2.appendChild(el);
+  }
+
+  keys.sort();
+  for (var i=0; i < keys.length; i++) {
+    var el = document.createElement("option");
+    el.textContent = keys[i];
+    el.value = keys[i];
+    select.appendChild(el);
+  }
+}
+
+function viewCountryPlot(e) {
+  var val = e.options[e.selectedIndex].value;
+
+  if (val) {
+    var plotData = countryPlots[val];
+    if (plotData) {
+      new uPlot(plotData[0], plotData[1], plotData[2]);
+
+      $('html, body').animate({
+        scrollTop: $(`#${val}`).offset().top
+      }, 2000);
+
+    }
+    e.selectedIndex = 0;
+
+
+  }
+
+}
+
+
+function prepPlotData(data) {
+
+  var countryConfirmedData = {};
+  var countryConfirmedPerDayData = {};
+  var countryDeathData = {};
+  var countryNormalised = [];
+
+  var dataConfirmed = data[0].replace("Korea, South", "South Korea").split('\n');
+  var dataDeaths = data[1].replace("Korea, South", "South Korea").split('\n')
+  var dataCountryLookup = data[2].split('\n');
+  var countryLookup = {};
+
+
+  var AustraliaConfirmed = {};
+  var AustraliaDeaths = {};
+  var dataCountryLockdown = data[3].replace("Korea, South", "South Korea").split('\n');
+  var countryLockdown = {};
 
   // Country Lockdown
   for (var i=1; i<dataCountryLockdown.length; i++) {
@@ -250,7 +332,7 @@ Promise.all([
     countryLockdown[d_[0].replace(/[|&;$'%@"<>*()+,]/g, "")] = d_[1];
   }
 
-  // Country Flag Lookups
+  // Country Flag Look  ups
   for (var i=1; i < dataCountryLookup.length; i++) {
     d_ = dataCountryLookup[i].split(',');
     countryLookup[d_[0]] = d_[1];
@@ -358,9 +440,8 @@ Promise.all([
   });
 
   // GLOBAL PLOT
-  $("#globalPlot").append(`<h5>Top 10 countries by number of confirmed cases</h5>`)
   plotDiv = $(`#globalPlot`)[0]
-  optsGlobal = getOpts(750, 400);
+  optsGlobal = getOpts('Top 10 countries by number of confirmed cases', 750, 400);
   delete optsGlobal.axes[2];
   delete optsGlobal.axes[3];
   delete optsGlobal.scales['deaths'];
@@ -383,7 +464,7 @@ Promise.all([
   }
 
   //optsGlobal.legend['show'] = false;
-  var uplot = new uPlot(optsGlobal, data, plotDiv);
+  //let uplotGlobal = new uPlot(optsGlobal, data, plotDiv);
 
   $("#globalPlot .legend").removeClass("inline")
   $("#globalPlot .legend").css("text-align", "left")
@@ -391,9 +472,8 @@ Promise.all([
   //return;
 
   // Australia Plot
-  $("#auPlot").append(`<h5>Australia</h5>`)
   plotDiv = $(`#auPlot`)[0]
-  optsAu = getOpts(750, 400);
+  var optsAu = getOpts('Australia cases by State', 750, 400);
   optsAu.gutters = {y:0, x:200}
 
   optsAu.plugins.push(seriesPointsPlugin());
@@ -420,7 +500,7 @@ Promise.all([
   }
 
   //optsAu.legend['show'] = false;
-  var auplot = new uPlot(optsAu, data, plotDiv);
+  let uplotAu = new uPlot(optsAu, data, plotDiv);
   
   $("#auPlot .legend").removeClass("inline")
   $("#auPlot .legend").css("text-align", "left")
@@ -432,15 +512,15 @@ Promise.all([
       continue;
     }
 
-    c = totals[i].country;
-    d = countryConfirmedData[c];
-    dd = countryDeathData[c]
-    ddd = countryConfirmedPerDayData[c];
+    let c = totals[i].country;
+    var d = countryConfirmedData[c];
+    var dd = countryDeathData[c]
+    var ddd = countryConfirmedPerDayData[c];
 
     // Normalise
     var ii = 0;
     var d_norm = [];
-    for (var ee=0; ee<d.length; ee++) {
+    for (var ee=0; ee<d.length-1; ee++) {
       if (d[ee] > 99) {
         d_norm.push(Number(d[ee]))
       }
@@ -450,12 +530,13 @@ Promise.all([
       countryNormalised.push({country: c, c_norm: d_norm});
     }
 
-
     if (c != "Australia") {
       //continue;
     }
 
-    optsCountry = getOpts(550,300);
+    var currentNum = Number(d[d.length-1]);
+
+    var optsCountry = getOpts(`${c} (n=${Number(currentNum).toLocaleString()})`, 550,300);
     optsCountry.plugins.push(legendAsTooltipPlugin());
 
     optsCountry = newSeries(optsCountry, c + " Confirmed");
@@ -468,10 +549,10 @@ Promise.all([
     }
 
     // Forecast
-    forecastCases = new Array(numDates).fill(null); //JSON.parse(JSON.stringify(d)); //
-    optsCountry = newSeries(optsCountry, `${c} forecast cases`, "confirmed", "grey", [5,2])
+    var forecastCases = new Array(numDates).fill(null); //JSON.parse(JSON.stringify(d)); //
+    var optsCountry = newSeries(optsCountry, `${c} forecast cases`, "confirmed", "grey", [5,2])
 
-    linear_ = ((Number(d[d.length-1]) - Number(d[d.length-2])) + 
+    var linear_ = ((Number(d[d.length-1]) - Number(d[d.length-2])) + 
                 (Number(d[d.length-2]) - Number(d[d.length-3])))/2
 
     var multiplier = ((Number(d[d.length-1]) / Number(d[d.length-2])) + 
@@ -479,51 +560,58 @@ Promise.all([
 
     if (multiplier > 1.3 || multiplier < 0.5 || isNaN(multiplier)) {multiplier = 1.05}
 
+    if (currentNum > 500) {
+      dangerList.push([linear_/ currentNum, c])
+    }
+
     for (var ee=0; ee<forecastDays+1; ee++) {
       idx = numDates-forecastDays + ee;
       //var forecast_ = Number(Number(d[d.length-1])*(Math.pow(Number(multiplier),ee)))
       var forecast_ = Number(Number(d[d.length-1])+(linear_*ee));
-
       forecastCases[idx] = forecast_.toFixed(0);
       if (!isNaN(forecast_)) {
         totalForecast[ee] = Number(totalForecast[ee]) + forecast_;
       };
     }
 
-    var currentNum = Number(d[d.length-1]);
     if (currentNum > 5) {
-      $("#countryplots").append(`<div id="plot_${c.replace(/ /g,'')}"><h6 class="text-center mb-0">${c} <small>(n=${Number(currentNum).toLocaleString()})</small><span id="${c}flag"</h6></div>`)
-      plotDiv = $(`#plot_${c.replace(/ /g,'')}`)[0]
+      plotDiv = $(`#countryplots`)[0]
 
       //var countryCode = countryLookup[c]
       //if (countryCode) {
       //  var flag = countryCode.toUpperCase().replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))
       //  $(`#${c}flag`).append(flag);
       //}
+      optsCountry.id = c;
+      var data = [dateList, d, dd, ddd, forecastCases]
 
-      data = [dateList, d, dd, ddd, forecastCases]
-      
-      let country_uplot = new uPlot(optsCountry, data, plotDiv);
+      if (!isMobile || currentNum > 8000 || c == "Australia") {
+        let country_uplot = new uPlot(optsCountry, data, plotDiv);
+      } else {
+        countryPlots[c] = [optsCountry, data, plotDiv, currentNum];
+      }
+      // }
+
     }
   } 
+  
+  return countryNormalised;
 
-}).then(d=> {
+}
 
+function makePlotNormalised(countryNormalised) {
+  
   //Normalised plot
   // GLOBAL PLOT
-  $("#normPlot").append(`<h5>Cumulative cases per country in days since first reached 100th case</h5>`)
-
   plotDiv = $(`#normPlot`)[0]
-  optsGlobal2 = getOpts(750, 750);
-  optsGlobal2.height = 750;
+  var optsGlobal2 = getOpts('Cumulative cases per country in days since first reached 100th case', 750, 750);
+  //optsGlobal2.height = 750;
+  //optsGlobal2.width = 500;
   delete optsGlobal2.axes[2];
   delete optsGlobal2.axes[3];
   delete optsGlobal2.scales['deaths'];
   delete optsGlobal2.scales['casesperday'];
-
   optsGlobal2.plugins.push(seriesPointsPlugin());
-
-
   optsGlobal2.scales['x'].time = false;
   optsGlobal2.axes[0].label = "Days since 100th case"
   optsGlobal2.lock = true;
@@ -535,24 +623,24 @@ Promise.all([
     };
 
   //optsGlobal2.axes[1].values = (u, vals, space) => {return vals.map(v => Math.pow(10, Number(v).toFixed(2)));}
-
-  //optsGlobal2.plugins.push(legendAsTooltipPlugin());
-  data = [Array.from(Array(50).keys())]
+  var data = [Array.from(Array(50).keys())]
 
   for (var i=0; i< Math.min(30,countryNormalised.length); i++) {
     c = countryNormalised[i].country  
     data.push(countryNormalised[i].c_norm) //.map(Math.log10));
-    optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], (c == "Italy" || c == "Germany" || c == "South Korea" || c == "US" || c == "Australia" || c == "United Kingdom"));
+    optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], 
+    (c == "Italy" 
+    || c == "Germany" 
+    || c == "South Korea" 
+    || c == "US"  
+    || c == "Australia" 
+    || c == "United Kingdom"
+    || c == "France"
+    || c == "Turkey")
+    );
   }
 
-  //optsGlobal2.legend['show'] = false;
   optsGlobal2.series[0] = {label: 'Days since 100th case'}
-  var uplot = new uPlot(optsGlobal2, data, plotDiv);
-  plotDiv = $(`#normPlot .uplot .legend`)[0]
-  $(plotDiv).css("width", "500px") 
-
-}).then(d=> {
-  $("#totals").append(`Today (est): <strong>${Number(totalForecast[0]).toLocaleString()}</strong>. +7days <strong>${Number(totalForecast[8]).toLocaleString()}</strong>`)
-}) 
-
-
+  let uplotNorm = new uPlot(optsGlobal2, data, plotDiv);
+  $($(`#normPlot .uplot .legend`)[0]).css("width", screen.width > 750 ? "750px" : "500px") 
+}
