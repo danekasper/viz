@@ -240,7 +240,8 @@ Promise.all([
   for (var i=0; i<dangerList.length && i <10; i++) {
     $("#atrisk").append(`${dangerList[i][1]} - ${(dangerList[i][0] * 100).toFixed()}%<br>`)
   }
- 
+  
+  if (isMobile) {
   $('#countryplots').before(`<div>
     <h5 class="title">Country cumulative cases, deaths and cases per day plots </h5> 
     <small> The top few countries are shown, select from alphabetical or total lists to view other countries</small>
@@ -258,6 +259,13 @@ Promise.all([
       <hr>`
     )
     createDropDownList()
+  } else {
+    $('#countryplots').before(`<div>
+    <h5 class="title">Country cumulative cases, deaths and cases per day plots </h5> 
+    <small>Countries are shown in order of total confirmed cases</small>
+      <hr>`
+    )
+  }
 
 
 }) 
