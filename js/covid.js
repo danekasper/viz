@@ -520,7 +520,7 @@ function prepPlotData(data) {
     // Normalise
     var ii = 0;
     var d_norm = [];
-    for (var ee=0; ee<d.length-1; ee++) {
+    for (var ee=0; ee<d.length; ee++) {
       if (d[ee] > 99) {
         d_norm.push(Number(d[ee]))
       }
