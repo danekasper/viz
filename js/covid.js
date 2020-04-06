@@ -9,203 +9,251 @@ var countryPlots = {};
 var dangerList = []
 let isMobile = window.matchMedia("only screen and (max-width: 760px)").matches;
 
-  // converts the legend into a simple tooltip
-  function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black" } } = {}) {
-    let legendEl;
+var day = ((new Date()-new Date("2020-03-18")) / 24 / 3600 / 1000).toFixed()
+$(document).prop('title', 'Day ' + day + ' - ' + $(document).prop('title'));
 
-    function init(u, opts) {
-      legendEl = u.root.querySelector(".legend");
-              
-      legendEl.classList.remove("inline");
-      //legendEl.classList.add("hidden");
-      className && legendEl.classList.add(className);
+// converts the legend into a simple tooltip
+function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black" } } = {}) {
+  let legendEl;
+
+  function init(u, opts) {
+    legendEl = u.root.querySelector(".legend");
+            
+    legendEl.classList.remove("inline");
+    //legendEl.classList.add("hidden");
+    className && legendEl.classList.add(className);
+  
+    Object.assign(legendEl.style, {
+      pointerEvents: "none",
+      display: "none",
+      position: "absolute",
+      left: 0,
+      top: 0,
+      zIndex: 100,
+      boxShadow: "2px 2px 10px rgba(0,0,0,0.5)",
+      ...style
+    });
+
+    // hide series color markers
+    const idents = legendEl.querySelectorAll(".ident");
+    //for (let i = 0; i < idents.length; i++) {idents[i].style.display = "none";}
+
+    // hide trend series
+    const series_ = legendEl.querySelectorAll(".series");
+    for (let i = 0; i < series_.length; i++) {series_[i].style.display = "block";}
+
+    const plotEl = u.ctx.canvas.parentNode;
+
+    // move legend into plot bounds
+    plotEl.appendChild(legendEl);
+
+    // show/hide tooltip on enter/exit
+    plotEl.addEventListener("mouseenter", () => {
+      u.root.querySelector(".legend").style.display = null;
+    });
+    plotEl.addEventListener("mouseleave", () => {u.root.querySelector(".legend").style.display = "none";});
+
+    // let tooltip exit plot
+    plotEl.style.overflow = "visible";
+  }
+
+  function update(u) {
+    const { left, top, idx } = u.cursor;
+    legendEl = u.root.querySelector(".legend");
+    const series_ = legendEl.querySelectorAll(".series");
+    hideforecast = false;
+    for (var i=1; i< series_.length; i++) {
+      if (hideforecast && i == 4) { 
+        series_[i].style.display = "none";
+        continue;
+      }
+
+      if (isNaN(u.data[i][idx]) || u.data[i][idx] == null) {
+        series_[i].style.display = "none";
+      } else {
+        hideforecast = true;
+        series_[i].style.display = "block";
+      }
+    }
+    u.root.querySelector(".legend").style.transform = "translate(" + left + "px, " + top + "px)";
+  }
+
+  return {
+    hooks: {
+      init: init,
+      setCursor: update,
+    }
+  };
+} 
+
+function renderAnnotations(date_, maxNumber, { fillStyle = 'black', font = '12px Arial'} = {})
+{
+  function drawAnnotations(u) {
+    let { ctx } = u;
+    //console.log(country_, maxNumber);
+    let xDate = new Date(date_).getTime()/1000;
+    //console.log(new Date(date_))
+    drawVerticalLine(u, xDate, maxNumber, new Date(date_).toDateString() , "right")
+  }
+
+  function drawVerticalLine(u, x, y, text, align = "left") {
+    let { ctx } = u;
+    //let text = `  Breakdown: ${breakdownPressure} MPa`;
     
-      Object.assign(legendEl.style, {
-        pointerEvents: "none",
-        display: "none",
-        position: "absolute",
-        left: 0,
-        top: 0,
-        zIndex: 100,
-        boxShadow: "2px 2px 10px rgba(0,0,0,0.5)",
-        ...style
-      });
+    let cx = u.valToPos(x+21*24*60*60, 'x') * devicePixelRatio;
+    let cy_min = u.valToPos(-10, 'confirmed') * devicePixelRatio;
+    let cy_max = u.valToPos(y*10, 'confirmed') * devicePixelRatio;
+    ctx.save();
+    ctx.font = font;
+    ctx.fillStyle = fillStyle;
+    ctx.textAlign = align;
+    ctx.fillText('Locked down ', cx, 18);
+    ctx.restore();
+    ctx.font = font;
+    ctx.fillStyle = fillStyle;
+    ctx.textAlign = align;
+    ctx.fillText(text + ' ', cx, 35);
 
-      // hide series color markers
-      const idents = legendEl.querySelectorAll(".ident");
-      //for (let i = 0; i < idents.length; i++) {idents[i].style.display = "none";}
+    ctx.beginPath();
+    ctx.moveTo(cx, cy_min);
+    ctx.lineTo(cx, cy_max);
+    ctx.strokeStyle = 'black'
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 1]);
+    ctx.stroke();
 
-      // hide trend series
-      const series_ = legendEl.querySelectorAll(".series");
-      for (let i = 0; i < series_.length; i++) {series_[i].style.display = "block";}
-
-      const plotEl = u.ctx.canvas.parentNode;
-
-      // move legend into plot bounds
-      plotEl.appendChild(legendEl);
-
-      // show/hide tooltip on enter/exit
-      plotEl.addEventListener("mouseenter", () => {
-        u.root.querySelector(".legend").style.display = null;
-      });
-      plotEl.addEventListener("mouseleave", () => {u.root.querySelector(".legend").style.display = "none";});
-
-      // let tooltip exit plot
-      plotEl.style.overflow = "visible";
-    }
-
-    function update(u) {
-      const { left, top, idx } = u.cursor;
-      legendEl = u.root.querySelector(".legend");
-      const series_ = legendEl.querySelectorAll(".series");
-      hideforecast = false;
-      for (var i=1; i< series_.length; i++) {
-        if (hideforecast && i == 4) { 
-          series_[i].style.display = "none";
-          continue;
-        }
-
-        if (isNaN(u.data[i][idx]) || u.data[i][idx] == null) {
-          series_[i].style.display = "none";
-        } else {
-          hideforecast = true;
-          series_[i].style.display = "block";
-        }
-      }
-      u.root.querySelector(".legend").style.transform = "translate(" + left + "px, " + top + "px)";
-    }
-
-    return {
-      hooks: {
-        init: init,
-        setCursor: update,
-      }
-    };
-  } 
-
-  function seriesPointsPlugin({ outerRadius = 2, innerRadius = 2} = {}) {
- 
-    function addLabel(ctx, cx, cy, series_label) {
-      ctx.font = screen.width > 500 ? '1em serif' : '3em serif';
-      ctx.textAlign = 'start'
-      ctx.fillText(series_label , cx+7, cy);
-    }
-
-    function drawPoint(ctx, cx, cy, s) {
-      ctx.beginPath();
-      ctx.arc(cx, cy, screen.width > 500 ? 4 : 6, 0, Math.PI*2, true);
-      ctx.globalAlpha = s.alpha;
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    function drawFinalPoint(u, i) {
-      let { ctx } = u;
-      let { stroke, scale } = u.series[i];
-
-      ctx.fillStyle = u.series[i].stroke;
-      
-      //let j = u.series[i].idxs[0]; // all points
-      //let j = u.series[i].idxs[1]; // final
-      let j = u.data[i].length-1;
-
-      while (j < u.series[0].idxs[1] + 1) {
-        let val = u.data[i][j];
-        let cx = Math.round(u.valToPos(u.data[0][j], 'x', true));
-        let cy = Math.round(u.valToPos(val, scale, true));
-        //drawStar(ctx, cx, cy);
-        drawPoint(ctx, cx, cy, u.series[i]);
-        addLabel(ctx, cx, cy, u.series[i].label + ' (n=' + Number(val).toLocaleString() +')');
-        j++;
-      };
-      ctx.globalAlpha = 1;
-    }
-
-    return {
-      opts: (u, opts) => {
-        opts.series.forEach((s, i) => {
-          if (i > 0) {
-            uPlot.assign(s, {
-              points: {
-                show: drawFinalPoint,
-              }
-            });
-          }
-        });
-      }
-    }
   }
 
-  function getOpts(title_, width_ = 500, height_ = 250) {
-    return {
-      title: title_,
-      width: width_, //screen.width > 500 ? width_ : 500,
-      height: height_, //screen.width > 500 ? height_ : 250,
-      legend: {
-        show: true,
-      },
-      plugins: [
-      ],
-      scales: {
-        "x": {
-          time: true,
-        },
-        "confirmed" : {
-          auto:true,
-        },
-        "casesperday" : {
-          auto:true,
-        },
-        "deaths" : {
-          auto:true,
-          range: (u, dataMin, dataMax) => {
-            let [min, max] = uPlot.rangeNum(dataMin, dataMax, 0.2, true);
-            return [
-              Math.min(0, dataMin),
-              Math.max(1, dataMax*2),
-            ];
-          }
-        }
-      },
-      series: [
-        {
-          label: "Date",
-          value: "{YYYY}-{MM}-{DD}"
-        },
-        ],
-      axes: [
-        {
-          grid: {show: true}
-        },
-        {
-          scale: 'confirmed',
-          label: 'Cumulative cases',
-          labelSize: 30,
-          size: 60,
-          side: 3,
-          grid: {show: true},
-        },
-        {
-          scale: 'deaths',
-          label: 'Deaths',
-          labelSize: 20,
-          size: 45,
-          side: 1,
-          grid: {show: false},
-          stroke: "red",
-        },            
-        {
-          scale: 'casesperday',
-          label: 'Cases per Day',
-          labelSize: 20,
-          size: 50,
-          side: 1,
-          grid: {show: false},
-          stroke: "blue",
-        },
-      ],
-    };
+  return {
+    hooks: {
+      draw: [drawAnnotations]
+    }        
   }
+}
+
+function seriesPointsPlugin({ outerRadius = 2, innerRadius = 2} = {}) {
+
+  function addLabel(ctx, cx, cy, series_label) {
+    ctx.font = screen.width > 500 ? '1em serif' : '3em serif';
+    ctx.textAlign = 'start'
+    ctx.fillText(series_label , cx+7, cy);
+  }
+
+  function drawPoint(ctx, cx, cy, s) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, screen.width > 500 ? 4 : 6, 0, Math.PI*2, true);
+    ctx.globalAlpha = s.alpha;
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawFinalPoint(u, i) {
+    let { ctx } = u;
+    let { stroke, scale } = u.series[i];
+
+    ctx.fillStyle = u.series[i].stroke;
+    
+    //let j = u.series[i].idxs[0]; // all points
+    //let j = u.series[i].idxs[1]; // final
+    let j = u.data[i].length-1;
+
+    while (j < u.series[0].idxs[1] + 1) {
+      let val = u.data[i][j];
+      let cx = Math.round(u.valToPos(u.data[0][j], 'x', true));
+      let cy = Math.round(u.valToPos(val, scale, true));
+      //drawStar(ctx, cx, cy);
+      drawPoint(ctx, cx, cy, u.series[i]);
+      addLabel(ctx, cx, cy, u.series[i].label + ' (n=' + Number(val).toLocaleString() +')');
+      j++;
+    };
+    ctx.globalAlpha = 1;
+  }
+
+  return {
+    opts: (u, opts) => {
+      opts.series.forEach((s, i) => {
+        if (i > 0) {
+          uPlot.assign(s, {
+            points: {
+              show: drawFinalPoint,
+            }
+          });
+        }
+      });
+    }
+  }
+}
+
+function getOpts(title_, width_ = 500, height_ = 250) {
+  return {
+    title: title_,
+    width: width_, //screen.width > 500 ? width_ : 500,
+    height: height_, //screen.width > 500 ? height_ : 250,
+    legend: {
+      show: true,
+    },
+    plugins: [
+    ],
+    scales: {
+      "x": {
+        time: true,
+      },
+      "confirmed" : {
+        auto:true,
+      },
+      "casesperday" : {
+        auto:true,
+      },
+      "deaths" : {
+        auto:true,
+        range: (u, dataMin, dataMax) => {
+          let [min, max] = uPlot.rangeNum(dataMin, dataMax, 0.2, true);
+          return [
+            Math.min(0, dataMin),
+            Math.max(1, dataMax*2),
+          ];
+        }
+      }
+    },
+    series: [
+      {
+        label: "Date",
+        value: "{YYYY}-{MM}-{DD}"
+      },
+      ],
+    axes: [
+      {
+        grid: {show: true}
+      },
+      {
+        scale: 'confirmed',
+        label: 'Cumulative cases',
+        labelSize: 30,
+        size: 60,
+        side: 3,
+        grid: {show: true},
+      },
+      {
+        scale: 'deaths',
+        label: 'Deaths',
+        labelSize: 20,
+        size: 45,
+        side: 1,
+        grid: {show: false},
+        stroke: "red",
+      },            
+      {
+        scale: 'casesperday',
+        label: 'New confirmed cases per week',
+        labelSize: 20,
+        size: 50,
+        side: 1,
+        grid: {show: false},
+        stroke: "blue",
+      },
+    ],
+  };
+}
 
 function newSeries(opts_, x, scale_ = "confirmed", stroke_ = "black", dash_=[1,0], show_=true, width_=2) {
   opts_.series.push({
@@ -226,7 +274,7 @@ Promise.all([
   fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv").then(res => {return res.text()}),
   fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv").then(res => {return res.text()}),
   fetch("https://raw.githubusercontent.com/AnthonyEbert/COVID-19_ISO-3166/master/JohnsHopkins-to-A3.csv").then(res => {return res.text()}),
-  fetch("../data/country-lockdown.csv").then(res => {return res.text()}),
+  fetch("data/country-lockdown.csv").then(res => {return res.text()}),
 ])
 .then(data => {
 
@@ -238,7 +286,12 @@ Promise.all([
   
   dangerList.sort().reverse();
   for (var i=0; i<dangerList.length && i <10; i++) {
-    $("#atrisk").append(`${dangerList[i][1]} - ${(dangerList[i][0] * 100).toFixed()}%<br>`)
+    but = `<button class="btn btn-link p-0 small" style="vertical-align: unset;" onclick="
+    $('html, body').animate({
+      scrollTop: $('#${dangerList[i][1]}').offset().top
+    }, 2000);"
+    >goto</button>`
+    $("#atrisk").append(`${dangerList[i][1]} - ${(dangerList[i][0] * 100).toFixed()}% ${but}<br>`)
   }
   
   if (isMobile) {
@@ -266,7 +319,6 @@ Promise.all([
       <hr>`
     )
   }
-
 
 }) 
 
@@ -312,13 +364,14 @@ function viewCountryPlot(e) {
 
 }
 
+var a;
 
 function prepPlotData(data) {
 
   var countryConfirmedData = {};
   var countryConfirmedPerDayData = {};
   var countryDeathData = {};
-  var countryNormalised = [];
+  var countryNormalised = {};
 
   var dataConfirmed = data[0].replace("Korea, South", "South Korea").split('\n');
   var dataDeaths = data[1].replace("Korea, South", "South Korea").split('\n')
@@ -340,6 +393,8 @@ function prepPlotData(data) {
     countryLockdown[d_[0].replace(/[|&;$'%@"<>*()+,]/g, "")] = d_[1];
   }
 
+  a = countryLockdown;
+
   // Country Flag Look  ups
   for (var i=1; i < dataCountryLookup.length; i++) {
     d_ = dataCountryLookup[i].split(',');
@@ -349,7 +404,7 @@ function prepPlotData(data) {
   colDateStart = 4;
 
   numCols = dataConfirmed[0].split(',').length
-  dateList = dataConfirmed[0].split(',').slice(colDateStart, numCols).map(a => {return new Date(a).getTime() /1000}); 
+  dateList = dataConfirmed[0].split(',').slice(colDateStart, numCols).map(a => {return new Date(a).getTime()/1000}); 
   
   // Forecast x days
   for (var i=1; i < forecastDays; i++) {
@@ -437,7 +492,8 @@ function prepPlotData(data) {
 
     countryConfirmedPerDayData[c] = [];
     for (var ee=0; ee<numCols-colDateStart; ee++) {
-      countryConfirmedPerDayData[c][ee] = Number(countryConfirmedData[c][ee]) - (ee == 0 ? 0 : Number(countryConfirmedData[c][ee - 1]))
+      //countryConfirmedPerDayData[c][ee] = Number(countryConfirmedData[c][ee]) - (ee == 0 ? 0 : Number(countryConfirmedData[c][ee - 1]))
+      countryConfirmedPerDayData[c][ee] = countryConfirmedData[c][ee] - countryConfirmedData[c][ee-7 < 0 ? 0 : ee-7];
     }
 
   }
@@ -535,7 +591,7 @@ function prepPlotData(data) {
     }
 
     if (d_norm.length > 0) {
-      countryNormalised.push({country: c, c_norm: d_norm});
+      countryNormalised[c] = d_norm;
     }
 
     if (c != "Australia") {
@@ -549,7 +605,7 @@ function prepPlotData(data) {
 
     optsCountry = newSeries(optsCountry, c + " Confirmed");
     optsCountry = newSeries(optsCountry, c + " Deaths", "deaths", "red");
-    optsCountry = newSeries(optsCountry, "Cases per day", "casesperday", "blue", [1,0], true, 1);
+    optsCountry = newSeries(optsCountry, "Cases per week", "casesperday", "blue", [1,0], true, 1);
 
     if (Number(dd[dd.length-1]) == 0) {
       // optsCountry.scales.Deaths.range = [0,1];
@@ -594,6 +650,10 @@ function prepPlotData(data) {
       var data = [dateList, d, dd, ddd, forecastCases]
 
       if (!isMobile || currentNum > 8000 || c == "Australia") {
+        if (Object.keys(countryLockdown).includes(c)) {
+          optsCountry.plugins.push(renderAnnotations(countryLockdown[c], currentNum));
+        }
+
         let country_uplot = new uPlot(optsCountry, data, plotDiv);
       } else {
         countryPlots[c] = [optsCountry, data, plotDiv, currentNum];
@@ -631,21 +691,15 @@ function makePlotNormalised(countryNormalised) {
     };
 
   //optsGlobal2.axes[1].values = (u, vals, space) => {return vals.map(v => Math.pow(10, Number(v).toFixed(2)));}
-  var data = [Array.from(Array(50).keys())]
-
-  for (var i=0; i< Math.min(30,countryNormalised.length); i++) {
-    c = countryNormalised[i].country  
-    data.push(countryNormalised[i].c_norm) //.map(Math.log10));
-    optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], 
-    (c == "Italy" 
-    || c == "Germany" 
-    || c == "South Korea" 
-    || c == "US"  
-    || c == "Australia" 
-    || c == "United Kingdom"
-    || c == "France"
-    || c == "Turkey")
-    );
+  var data = [Array.from(Array(60).keys())]
+  var countryArray = ["US", "Italy", "Spain", "Germany", "United Kingdom", "France", "Turkey", "Australia"]
+  var countries = Object.keys(countryNormalised)
+  console.log(countryArray.includes("US"))
+  for (var i=0; i< Math.min(40,countries.length); i++) {
+    c = countries[i]
+    showCountry = countryArray.includes(c) || countryNormalised[c][countryNormalised[c].length-1] > 20000;
+    data.push(countryNormalised[c]) //.map(Math.log10));
+    optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], showCountry);
   }
 
   optsGlobal2.series[0] = {label: 'Days since 100th case'}
