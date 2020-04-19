@@ -18,7 +18,7 @@
       <p>
         <div id="totals"></div>
         <div class="small">Data source: Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE) <a href="https://github.com/CSSEGISandData/COVID-19">[link]</a></div>
-      </p>
+        <a href="/viz/covid_USA">USA State charts</a></p>
       <div id="globalPlot" align="center"></div>
 	  <hr> 
       <div id="normPlot" align="center"></div>
@@ -36,5 +36,55 @@
     <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+  
+    <script>
+      Promise.all([
+      fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv").then(res => {return res.text()}),
+      fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv").then(res => {return res.text()}),
+      fetch("https://raw.githubusercontent.com/AnthonyEbert/COVID-19_ISO-3166/master/JohnsHopkins-to-A3.csv").then(res => {return res.text()}),
+      fetch("data/country-lockdown.csv").then(res => {return res.text()}),
+    ])
+    .then(data => {
+      let ret = prepPlotData(data);
+      setTimeout(() => makePlotNormalised(ret));
+    }).then(d=> {
+      $("#totals").append(`Today (est): <strong>${Number(totalForecast[0]).toLocaleString()}</strong>. +7days <strong>${Number(totalForecast[8]).toLocaleString()}</strong>`)
+      
+      dangerList.sort().reverse();
+      for (var i=0; i<dangerList.length && i <10; i++) {
+        but = `<button class="btn btn-link p-0 small" style="vertical-align: unset;" onclick="scrollToCountry('${dangerList[i][1]}');"
+        >goto</button>`
+        $("#atrisk").append(`${dangerList[i][1]} - ${(dangerList[i][0] * 100).toFixed()}% ${but}<br>`)
+      }
+      
+      if (isMobile) {
+      $('#countryplots').before(`<div>
+        <h5 class="title">Country cumulative cases, deaths and cases per day plots </h5> 
+        <small> The top few countries are shown, select from alphabetical or total lists to view other countries</small>
+        <br>  
+          <form-label>Ordered alphabetically: </form-label>
+          <select onchange="viewCountryPlot(this)" id="selectCountry">
+            <option value=-1>Select country chart to view</option>
+          </select>
+          <br>
+          <form-label>Ordered by total: </form-label>
+          <select onchange="viewCountryPlot(this)" id="selectCountryTotal">
+            <option value=-1>Select country chart to view</option>
+          </select>
+          </div>
+          <hr>`
+        )
+        createDropDownList()
+      } else {
+        $('#countryplots').before(`<div>
+        <h5 class="title">Country cumulative cases, deaths and cases per day plots </h5> 
+        <small>Countries are shown in order of total confirmed cases</small>
+          <hr>`
+        )
+      }
+
+    }) 
+  </script>
+  
   </body>
 </html>

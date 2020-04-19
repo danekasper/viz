@@ -270,58 +270,6 @@ function newSeries(opts_, x, scale_ = "confirmed", stroke_ = "black", dash_=[1,0
   return opts_;
 }
 
-Promise.all([
-  fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv").then(res => {return res.text()}),
-  fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv").then(res => {return res.text()}),
-  fetch("https://raw.githubusercontent.com/AnthonyEbert/COVID-19_ISO-3166/master/JohnsHopkins-to-A3.csv").then(res => {return res.text()}),
-  fetch("data/country-lockdown.csv").then(res => {return res.text()}),
-])
-.then(data => {
-
-  let ret = prepPlotData(data);
-  setTimeout(() => makePlotNormalised(ret));
-
-}).then(d=> {
-  $("#totals").append(`Today (est): <strong>${Number(totalForecast[0]).toLocaleString()}</strong>. +7days <strong>${Number(totalForecast[8]).toLocaleString()}</strong>`)
-  
-  dangerList.sort().reverse();
-  for (var i=0; i<dangerList.length && i <10; i++) {
-    but = `<button class="btn btn-link p-0 small" style="vertical-align: unset;" onclick="
-    $('html, body').animate({
-      scrollTop: $('#${dangerList[i][1]}').offset().top
-    }, 2000);"
-    >goto</button>`
-    $("#atrisk").append(`${dangerList[i][1]} - ${(dangerList[i][0] * 100).toFixed()}% ${but}<br>`)
-  }
-  
-  if (isMobile) {
-  $('#countryplots').before(`<div>
-    <h5 class="title">Country cumulative cases, deaths and cases per day plots </h5> 
-    <small> The top few countries are shown, select from alphabetical or total lists to view other countries</small>
-    <br>  
-      <form-label>Ordered alphabetically: </form-label>
-      <select onchange="viewCountryPlot(this)" id="selectCountry">
-        <option value=-1>Select country chart to view</option>
-      </select>
-      <br>
-      <form-label>Ordered by total: </form-label>
-      <select onchange="viewCountryPlot(this)" id="selectCountryTotal">
-        <option value=-1>Select country chart to view</option>
-      </select>
-      </div>
-      <hr>`
-    )
-    createDropDownList()
-  } else {
-    $('#countryplots').before(`<div>
-    <h5 class="title">Country cumulative cases, deaths and cases per day plots </h5> 
-    <small>Countries are shown in order of total confirmed cases</small>
-      <hr>`
-    )
-  }
-
-}) 
-
 function createDropDownList() {
   var select = document.getElementById("selectCountry"); 
   var select2 = document.getElementById("selectCountryTotal"); 
@@ -358,13 +306,119 @@ function viewCountryPlot(e) {
 
     }
     e.selectedIndex = 0;
+  }
+}
 
+function scrollToCountry(country) {
+  if ($(`#${country}`).length == 0) {
+    var plotData = countryPlots[country];
+    if (plotData) {
+      new uPlot(plotData[0], plotData[1], plotData[2]);
+    }
+  };
+  $('html, body').animate({
+    scrollTop: $(`#${country}`).offset().top
+  }, 2000);
+}
+
+var a;
+
+function prepUSAData(data) {
+  var USConfirmed = {};
+  var USDeaths = {};
+  var USPerWeek = {};
+
+  var dataConfirmed = data[0].split('\n');
+  var dataDeaths = data[1].split('\n');
+
+  colDateStart = 13;
+  numCols = dataConfirmed[0].split(',').length
+  dateList = dataConfirmed[0].split(',').slice(colDateStart, numCols).map(a => {return new Date(a).getTime()/1000}); 
+ 
+  // Combine Dataset
+  for (var i=0; i<dataConfirmed.length; i++) {
+    rowConfirmed_ = dataConfirmed[i].split(",")
+    rowDeaths_ = dataDeaths[i].split(",")
+    state = rowConfirmed_[6]
+
+    if (state in USConfirmed) {
+      for (var ee=colDateStart; ee<numCols; ee++) {
+        USConfirmed[state][ee-colDateStart] = Number(USConfirmed[state][ee-colDateStart]) + Number(rowConfirmed_[ee])
+      }
+    } else {
+      USConfirmed[rowConfirmed_[6]] = rowConfirmed_.slice(colDateStart, numCols);
+    }
+
+    if (state in USDeaths) {
+      for (var ee=colDateStart; ee<numCols; ee++) {
+        USDeaths[state][ee-colDateStart] = Number(USDeaths[state][ee-colDateStart]) + Number(rowDeaths_[ee+1])
+      }
+    } else {
+      USDeaths[rowConfirmed_[6]] = rowDeaths_.slice(colDateStart+1, numCols+1);
+    }
+
+  }
+
+  // Create weekly totals
+  console.log(USDeaths)
+  totals = [];
+  totalForecast = []
+  
+  for (c in USConfirmed) {
+    d = USConfirmed[c];
+    totals.push({state: c, total:Number(d[d.length-1])})
+    USPerWeek[c] = [];
+    for (var ee=0; ee<numCols-colDateStart; ee++) {
+      USPerWeek[c][ee] = USConfirmed[c][ee] - USConfirmed[c][ee-7 < 0 ? 0 : ee-7];
+    }
+
+    // Forecast
+    delta_ = Number((Number(d[d.length-1])-d[d.length-4]) / 3)
+    for (var ee=0; ee<9; ee++) {
+      if (d[d.length-1] > 0) { 
+        forecast_ = Number(Number(d[d.length-1])+(delta_ * ee)) 
+        if (!isNaN(forecast_)) {
+          totalForecast[ee] = forecast_ + Number(totalForecast[ee] | 0)
+        }
+      }
+    }
+
+  }
+
+  //Sort totals
+  totals.sort(function(a, b) {
+    return ((a.total > b.total) ? -1 : ((a.total == b.total) ? 0 : 1));
+  });
+
+  // Chart
+  plotDiv = $(`#usaPlot`)[0]
+
+  for (var i=0; i<totals.length; i++) {
+
+    if (isNaN(totals[i].total)) {
+      continue;
+    }
+
+    c = totals[i].state;
+    d = USConfirmed[c];
+    dd = USDeaths[c];
+    ddd = USPerWeek[c];
+
+    var optsState = getOpts(`${c} (n=${Number(totals[i].total).toLocaleString()})`, 550,300);
+    optsState.plugins.push(legendAsTooltipPlugin());
+  
+    optsState = newSeries(optsState, c + " Confirmed");
+    optsState = newSeries(optsState, c + " Deaths", "deaths", "red");
+    optsState = newSeries(optsState, "Cases per week", "casesperday", "blue", [1,0], true, 1);
+
+    optsState.id = c;
+    var data = [dateList, d, dd, ddd];
+    //if (!isMobile || currentNum > 8000 || c == "Australia") {
+    let country_uplot = new uPlot(optsState, data, plotDiv);
 
   }
 
 }
-
-var a;
 
 function prepPlotData(data) {
 
@@ -381,6 +435,7 @@ function prepPlotData(data) {
 
   var AustraliaConfirmed = {};
   var AustraliaDeaths = {};
+
   var dataCountryLockdown = data[3].replace("Korea, South", "South Korea").split('\n');
   var countryLockdown = {};
 
@@ -423,7 +478,7 @@ function prepPlotData(data) {
       AustraliaConfirmed[rowConfirmed_[0].replace("Australian Capital Territory", "ACT")] = rowConfirmed_.slice(colDateStart, numCols);
       AustraliaDeaths[rowConfirmed_[0]] = rowDeaths_.slice(colDateStart, numCols);
     }
-    
+
     // Remove States/Towns
     if(rowConfirmed_.length == numCols + 1) {
       rowConfirmed_.shift();
