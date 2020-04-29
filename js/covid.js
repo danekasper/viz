@@ -1,5 +1,8 @@
 colors = ['black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
         '#a3c56e','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
+        'black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
+        '#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
+        '#a3c56e','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
         'black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999'];
 var forecastIdx;
 var forecastDays = 10
@@ -134,7 +137,7 @@ function renderAnnotations(date_, maxNumber, { fillStyle = 'black', font = '12px
 function seriesPointsPlugin({ outerRadius = 2, innerRadius = 2} = {}) {
 
   function addLabel(ctx, cx, cy, series_label) {
-    ctx.font = screen.width > 500 ? '1em serif' : '3em serif';
+    ctx.font = screen.width > 500 ? '0.9em serif' : '3em serif';
     ctx.textAlign = 'start'
     ctx.fillText(series_label , cx+7, cy);
   }
@@ -550,7 +553,6 @@ function prepPlotData(data) {
       //countryConfirmedPerDayData[c][ee] = Number(countryConfirmedData[c][ee]) - (ee == 0 ? 0 : Number(countryConfirmedData[c][ee - 1]))
       countryConfirmedPerDayData[c][ee] = countryConfirmedData[c][ee] - countryConfirmedData[c][ee-7 < 0 ? 0 : ee-7];
     }
-
   }
 
   //Sort totals
@@ -640,7 +642,7 @@ function prepPlotData(data) {
     var ii = 0;
     var d_norm = [];
     for (var ee=0; ee<d.length; ee++) {
-      if (d[ee] > 99) {
+      if (d[ee] > 999) {
         d_norm.push(Number(d[ee]))
       }
     }
@@ -727,7 +729,7 @@ function makePlotNormalised(countryNormalised) {
   //Normalised plot
   // GLOBAL PLOT
   plotDiv = $(`#normPlot`)[0]
-  var optsGlobal2 = getOpts('Cumulative cases per country in days since first reached 100th case', 750, 750);
+  var optsGlobal2 = getOpts('Cumulative cases per country in days since first reached 1000th case', 750, 750);
   //optsGlobal2.height = 750;
   //optsGlobal2.width = 500;
   delete optsGlobal2.axes[2];
@@ -736,7 +738,7 @@ function makePlotNormalised(countryNormalised) {
   delete optsGlobal2.scales['casesperday'];
   optsGlobal2.plugins.push(seriesPointsPlugin());
   optsGlobal2.scales['x'].time = false;
-  optsGlobal2.axes[0].label = "Days since 100th case"
+  optsGlobal2.axes[0].label = "Days since 1000th case"
   optsGlobal2.lock = true;
   optsGlobal2.cursor = {
       focus: {
@@ -746,18 +748,18 @@ function makePlotNormalised(countryNormalised) {
     };
 
   //optsGlobal2.axes[1].values = (u, vals, space) => {return vals.map(v => Math.pow(10, Number(v).toFixed(2)));}
-  var data = [Array.from(Array(60).keys())]
-  var countryArray = ["US", "Italy", "Spain", "Germany", "United Kingdom", "France", "Turkey", "Australia"]
+  var data = [Array.from(Array(120).keys())]
+  var countryArrayHide = ["US"]
+  var countryArray = ["Italy", "Singapore", "Spain", "Germany", "United Kingdom", "France", "Turkey", "Australia"]
   var countries = Object.keys(countryNormalised)
-  console.log(countryArray.includes("US"))
-  for (var i=0; i< Math.min(40,countries.length); i++) {
+  for (var i=0; i< Math.min(60,countries.length); i++) {
     c = countries[i]
-    showCountry = countryArray.includes(c) || countryNormalised[c][countryNormalised[c].length-1] > 20000;
+    showCountry = !countryArrayHide.includes(c) & (countryArray.includes(c) || countryNormalised[c][countryNormalised[c].length-1] > 35000);
     data.push(countryNormalised[c]) //.map(Math.log10));
     optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], showCountry);
   }
 
-  optsGlobal2.series[0] = {label: 'Days since 100th case'}
+  optsGlobal2.series[0] = {label: 'Days since 1000th case'}
   let uplotNorm = new uPlot(optsGlobal2, data, plotDiv);
   $($(`#normPlot .uplot .legend`)[0]).css("width", screen.width > 750 ? "750px" : "500px") 
 }
