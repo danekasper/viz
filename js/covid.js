@@ -238,7 +238,7 @@ function getOpts(title_, width_ = 500, height_ = 250) {
       },
       {
         scale: 'deaths',
-        label: 'Deaths',
+        label: 'Deaths per week',
         labelSize: 20,
         size: 45,
         side: 1,
@@ -330,6 +330,7 @@ function prepUSAData(data) {
   var USConfirmed = {};
   var USDeaths = {};
   var USPerWeek = {};
+  var USDeathsPerWeek = {};
 
   var dataConfirmed = data[0].split('\n');
   var dataDeaths = data[1].split('\n');
@@ -375,6 +376,11 @@ function prepUSAData(data) {
       USPerWeek[c][ee] = USConfirmed[c][ee] - USConfirmed[c][ee-7 < 0 ? 0 : ee-7];
     }
 
+    USDeathsPerWeek[c] = [];
+    for (var ee=0; ee<numCols-colDateStart; ee++) {
+      USDeathsPerWeek[c][ee] = USDeaths[c][ee] - USDeaths[c][ee-7 < 0 ? 0 : ee-7];
+    }
+
     // Forecast
     delta_ = Number((Number(d[d.length-1])-d[d.length-4]) / 3)
     for (var ee=0; ee<9; ee++) {
@@ -406,16 +412,17 @@ function prepUSAData(data) {
     d = USConfirmed[c];
     dd = USDeaths[c];
     ddd = USPerWeek[c];
+    dddd = USDeathsPerWeek[c];
 
     var optsState = getOpts(`${c} (n=${Number(totals[i].total).toLocaleString()})`, 550,300);
     optsState.plugins.push(legendAsTooltipPlugin());
   
     optsState = newSeries(optsState, c + " Confirmed");
-    optsState = newSeries(optsState, c + " Deaths", "deaths", "red");
+    optsState = newSeries(optsState, "Deaths per week", "deaths", "red");
     optsState = newSeries(optsState, "Cases per week", "casesperday", "blue", [1,0], true, 1);
 
     optsState.id = c;
-    var data = [dateList, d, dd, ddd];
+    var data = [dateList, d, dddd, ddd];
     //if (!isMobile || currentNum > 8000 || c == "Australia") {
     let country_uplot = new uPlot(optsState, data, plotDiv);
 
@@ -427,6 +434,7 @@ function prepPlotData(data) {
 
   var countryConfirmedData = {};
   var countryConfirmedPerDayData = {};
+  var countryDeathsPerWeek = {};
   var countryDeathData = {};
   var countryNormalised = {};
 
@@ -434,7 +442,6 @@ function prepPlotData(data) {
   var dataDeaths = data[1].replace("Korea, South", "South Korea").split('\n')
   var dataCountryLookup = data[2].split('\n');
   var countryLookup = {};
-
 
   var AustraliaConfirmed = {};
   var AustraliaDeaths = {};
@@ -548,11 +555,18 @@ function prepPlotData(data) {
     }
     totals.push({country: c, total:Number(d[d.length-1])})
 
+    // Weekly total
     countryConfirmedPerDayData[c] = [];
     for (var ee=0; ee<numCols-colDateStart; ee++) {
       //countryConfirmedPerDayData[c][ee] = Number(countryConfirmedData[c][ee]) - (ee == 0 ? 0 : Number(countryConfirmedData[c][ee - 1]))
       countryConfirmedPerDayData[c][ee] = countryConfirmedData[c][ee] - countryConfirmedData[c][ee-7 < 0 ? 0 : ee-7];
     }
+
+    countryDeathsPerWeek[c] = [];
+    for (var ee=0; ee<numCols-colDateStart; ee++) {
+      countryDeathsPerWeek[c][ee] = countryDeathData[c][ee] - countryDeathData[c][ee-7 < 0 ? 0 : ee-7];
+    }
+
   }
 
   //Sort totals
@@ -637,6 +651,7 @@ function prepPlotData(data) {
     var d = countryConfirmedData[c];
     var dd = countryDeathData[c]
     var ddd = countryConfirmedPerDayData[c];
+    var dddd = countryDeathsPerWeek[c];
 
     // Normalise
     var ii = 0;
@@ -661,7 +676,7 @@ function prepPlotData(data) {
     optsCountry.plugins.push(legendAsTooltipPlugin());
 
     optsCountry = newSeries(optsCountry, c + " Confirmed");
-    optsCountry = newSeries(optsCountry, c + " Deaths", "deaths", "red");
+    optsCountry = newSeries(optsCountry, "Deaths per week", "deaths", "red");
     optsCountry = newSeries(optsCountry, "Cases per week", "casesperday", "blue", [1,0], true, 1);
 
     if (Number(dd[dd.length-1]) == 0) {
@@ -704,7 +719,7 @@ function prepPlotData(data) {
       //  $(`#${c}flag`).append(flag);
       //}
       optsCountry.id = c;
-      var data = [dateList, d, dd, ddd, forecastCases]
+      var data = [dateList, d, dddd, ddd, forecastCases]
 
       if (!isMobile || currentNum > 8000 || c == "Australia") {
         if (Object.keys(countryLockdown).includes(c)) {
