@@ -606,39 +606,44 @@ function prepPlotData(data) {
 
   //return;
 
-  // Australia Plot
-  plotDiv = $(`#auPlot`)[0]
-  var optsAu = getOpts('Australia cases by State', 750, 400);
-  optsAu.gutters = {y:0, x:200}
+  //// Australia Plot
+  // plotDiv = $(`#auPlot`)[0]
+  // var optsAu = getOpts('Australia cases by State', 750, 400);
+  // optsAu.gutters = {y:0, x:200}
 
-  optsAu.plugins.push(seriesPointsPlugin());
-  delete optsAu.axes[2];
-  delete optsAu.axes[3];
-  delete optsAu.scales['deaths'];
-  delete optsAu.scales['casesperday'];
-  optsAu.lock = true;
-  optsAu.cursor = {
-      focus: {
-        alpha: 0.3,
-        prox: 30,
-      }
-    };
-  labels = []
-  data = [dateList.slice(0, dateList.length-forecastDays+2)]
+  // optsAu.plugins.push(seriesPointsPlugin());
+  // delete optsAu.axes[2];
+  // delete optsAu.axes[3];
+  // delete optsAu.scales['deaths'];
+  // delete optsAu.scales['casesperday'];
+  // optsAu.lock = true;
+  // optsAu.cursor = {
+  //     focus: {
+  //       alpha: 0.3,
+  //       prox: 30,
+  //     }
+  //   };
+  // labels = []
+  // data = [dateList.slice(0, dateList.length-forecastDays+2)]
 
-  i = 0;
-  for (c in AustraliaConfirmed) {
-    labels.push(c);
-    data.push(AustraliaConfirmed[c]);
-    optsAu = newSeries(optsAu, c, "confirmed", colors[i],[1,0]);
-    i ++;
-  }
+  // i = 0;
+  // for (c in AustraliaConfirmed) {
+  //   labels.push(c);
+  //   data.push(AustraliaConfirmed[c]);
+  //   optsAu = newSeries(optsAu, c, "confirmed", colors[i],[1,0]);
+  //   i ++;
+  // }
 
-  //optsAu.legend['show'] = false;
-  let uplotAu = new uPlot(optsAu, data, plotDiv);
+  // //optsAu.legend['show'] = false;
+  // try {
+  //   let uplotAu = new uPlot(optsAu, data, plotDiv);    
+  // } catch (error) {
+  //   console.error(error);
+  //   console.log(data);
+  // }
   
-  $("#auPlot .legend").removeClass("inline")
-  $("#auPlot .legend").css("text-align", "left")
+  // $("#auPlot .legend").removeClass("inline")
+  // $("#auPlot .legend").css("text-align", "left")
 
   // COUNTRY SPECIFIC PLOTS
   for (var i=0; i<totals.length; i++) {
@@ -723,7 +728,7 @@ function prepPlotData(data) {
 
       if (!isMobile || currentNum > 8000 || c == "Australia") {
         if (Object.keys(countryLockdown).includes(c)) {
-          optsCountry.plugins.push(renderAnnotations(countryLockdown[c], currentNum));
+          //optsCountry.plugins.push(renderAnnotations(countryLockdown[c], currentNum));
         }
 
         let country_uplot = new uPlot(optsCountry, data, plotDiv);
@@ -764,12 +769,12 @@ function makePlotNormalised(countryNormalised) {
 
   //optsGlobal2.axes[1].values = (u, vals, space) => {return vals.map(v => Math.pow(10, Number(v).toFixed(2)));}
   var data = [Array.from(Array(120).keys())]
-  var countryArrayHide = ["US"]
-  var countryArray = ["Italy", "Singapore", "Spain", "Germany", "United Kingdom", "France", "Turkey", "Australia"]
+  var countryArrayHide = ["China", "Germany", "France"]
+  var countryArray = ["US", "Singapore", "Sweden", "Spain", "United Kingdom", "Turkey", "Australia"]
   var countries = Object.keys(countryNormalised)
   for (var i=0; i< Math.min(60,countries.length); i++) {
     c = countries[i]
-    showCountry = !countryArrayHide.includes(c) & (countryArray.includes(c) || countryNormalised[c][countryNormalised[c].length-1] > 35000);
+    showCountry = !countryArrayHide.includes(c) & (countryArray.includes(c) || countryNormalised[c][countryNormalised[c].length-1] > 85000);
     data.push(countryNormalised[c]) //.map(Math.log10));
     optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], showCountry);
   }
