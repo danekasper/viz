@@ -5,7 +5,7 @@ colors = ['black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','
         '#a3c56e','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
         'black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999'];
 var forecastIdx;
-var forecastDays = 10
+var forecastDays = 28
 var totalForecast = new Array(forecastDays+1).fill(0);
 
 var countryPlots = {};
@@ -20,9 +20,9 @@ function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255,
   let legendEl;
 
   function init(u, opts) {
-    legendEl = u.root.querySelector(".legend");
+    legendEl = u.root.querySelector(".u-legend");
             
-    legendEl.classList.remove("inline");
+    legendEl.classList.remove("u-inline");
     //legendEl.classList.add("hidden");
     className && legendEl.classList.add(className);
   
@@ -42,7 +42,7 @@ function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255,
     //for (let i = 0; i < idents.length; i++) {idents[i].style.display = "none";}
 
     // hide trend series
-    const series_ = legendEl.querySelectorAll(".series");
+    const series_ = legendEl.querySelectorAll(".u-series");
     for (let i = 0; i < series_.length; i++) {series_[i].style.display = "block";}
 
     const plotEl = u.ctx.canvas.parentNode;
@@ -52,9 +52,9 @@ function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255,
 
     // show/hide tooltip on enter/exit
     plotEl.addEventListener("mouseenter", () => {
-      u.root.querySelector(".legend").style.display = null;
+      u.root.querySelector(".u-legend").style.display = null;
     });
-    plotEl.addEventListener("mouseleave", () => {u.root.querySelector(".legend").style.display = "none";});
+    plotEl.addEventListener("mouseleave", () => {u.root.querySelector(".u-legend").style.display = "none";});
 
     // let tooltip exit plot
     plotEl.style.overflow = "visible";
@@ -62,8 +62,8 @@ function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255,
 
   function update(u) {
     const { left, top, idx } = u.cursor;
-    legendEl = u.root.querySelector(".legend");
-    const series_ = legendEl.querySelectorAll(".series");
+    legendEl = u.root.querySelector(".u-legend");
+    const series_ = legendEl.querySelectorAll(".u-series");
     hideforecast = false;
     for (var i=1; i< series_.length; i++) {
       if (hideforecast && i == 4) { 
@@ -78,7 +78,7 @@ function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255,
         series_[i].style.display = "block";
       }
     }
-    u.root.querySelector(".legend").style.transform = "translate(" + left + "px, " + top + "px)";
+    u.root.querySelector(".u-legend").style.transform = "translate(" + left + "px, " + top + "px)";
   }
 
   return {
@@ -212,7 +212,7 @@ function getOpts(title_, width_ = 500, height_ = 250) {
         range: (u, dataMin, dataMax) => {
           let [min, max] = uPlot.rangeNum(dataMin, dataMax, 0.2, true);
           return [
-            Math.min(0, dataMin),
+            Math.max(0, dataMin),
             Math.max(1, dataMax*2),
           ];
         }
@@ -232,7 +232,7 @@ function getOpts(title_, width_ = 500, height_ = 250) {
         scale: 'confirmed',
         label: 'Cumulative cases',
         labelSize: 30,
-        size: 60,
+        size: 70,
         side: 3,
         grid: {show: true},
       },
@@ -240,7 +240,7 @@ function getOpts(title_, width_ = 500, height_ = 250) {
         scale: 'deaths',
         label: 'Deaths per week',
         labelSize: 20,
-        size: 45,
+        size: 55,
         side: 1,
         grid: {show: false},
         stroke: "red",
@@ -249,7 +249,7 @@ function getOpts(title_, width_ = 500, height_ = 250) {
         scale: 'casesperday',
         label: 'New confirmed cases per week',
         labelSize: 20,
-        size: 50,
+        size: 60,
         side: 1,
         grid: {show: false},
         stroke: "blue",
@@ -304,7 +304,7 @@ function viewCountryPlot(e) {
       new uPlot(plotData[0], plotData[1], plotData[2]);
 
       $('html, body').animate({
-        scrollTop: $(`#${val}`).offset().top
+        scrollTop: $(`#${val.replace(/ /g,'')}`).offset().top
       }, 2000);
 
     }
@@ -313,14 +313,14 @@ function viewCountryPlot(e) {
 }
 
 function scrollToCountry(country) {
-  if ($(`#${country}`).length == 0) {
+  if ($(`#${country.replace(/ /g,'')}`).length == 0) {
     var plotData = countryPlots[country];
     if (plotData) {
       new uPlot(plotData[0], plotData[1], plotData[2]);
     }
   };
   $('html, body').animate({
-    scrollTop: $(`#${country}`).offset().top
+    scrollTop: $(`#${country.replace(/ /g,'')}`).offset().top
   }, 2000);
 }
 
@@ -364,7 +364,7 @@ function prepUSAData(data) {
   }
 
   // Create weekly totals
-  console.log(USDeaths)
+  //console.log(USDeaths)
   totals = [];
   totalForecast = []
   
@@ -425,7 +425,8 @@ function prepUSAData(data) {
     var data = [dateList, d, dddd, ddd];
     //if (!isMobile || currentNum > 8000 || c == "Australia") {
     let country_uplot = new uPlot(optsState, data, plotDiv);
-
+    //country_uplot.axes[2].show = false;
+    country_uplot.redraw();
   }
 
 }
@@ -601,8 +602,8 @@ function prepPlotData(data) {
   //optsGlobal.legend['show'] = false;
   //let uplotGlobal = new uPlot(optsGlobal, data, plotDiv);
 
-  $("#globalPlot .legend").removeClass("inline")
-  $("#globalPlot .legend").css("text-align", "left")
+  $("#globalPlot .u-legend").removeClass("u-inline")
+  $("#globalPlot .u-legend").css("text-align", "left")
 
   //return;
 
@@ -768,7 +769,7 @@ function makePlotNormalised(countryNormalised) {
     };
 
   //optsGlobal2.axes[1].values = (u, vals, space) => {return vals.map(v => Math.pow(10, Number(v).toFixed(2)));}
-  var data = [Array.from(Array(120).keys())]
+  var data = [Array.from(Array(365).keys())]
   var countryArrayHide = ["China", "Germany", "France"]
   var countryArray = ["US", "Singapore", "Sweden", "Spain", "United Kingdom", "Turkey", "Australia"]
   var countries = Object.keys(countryNormalised)
@@ -781,5 +782,5 @@ function makePlotNormalised(countryNormalised) {
 
   optsGlobal2.series[0] = {label: 'Days since 1000th case'}
   let uplotNorm = new uPlot(optsGlobal2, data, plotDiv);
-  $($(`#normPlot .uplot .legend`)[0]).css("width", screen.width > 750 ? "750px" : "500px") 
+  $($(`#normPlot .uplot .u-legend`)[0]).css("width", screen.width > 750 ? "750px" : "500px") 
 }
