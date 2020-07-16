@@ -5,7 +5,7 @@ colors = ['black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','
         '#a3c56e','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999',
         'black','#377eb8','#4daf4a','#984ea3','#ff7f00','darkblue','#a65628','#f781bf','#999999'];
 var forecastIdx;
-var forecastDays = 28
+var forecastDays = 14
 var totalForecast = new Array(forecastDays+1).fill(0);
 
 var countryPlots = {};
@@ -13,7 +13,7 @@ var dangerList = []
 let isMobile = window.matchMedia("only screen and (max-width: 760px)").matches;
 
 var day = ((new Date()-new Date("2020-03-18")) / 24 / 3600 / 1000).toFixed()
-$(document).prop('title', 'Day ' + day + ' - ' + $(document).prop('title'));
+$(document).prop('title', $(document).prop('title')  + ' - Day ' + day);
 
 // converts the legend into a simple tooltip
 function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black" } } = {}) {
@@ -409,10 +409,10 @@ function prepUSAData(data) {
     }
 
     c = totals[i].state;
-    d = USConfirmed[c];
-    dd = USDeaths[c];
-    ddd = USPerWeek[c];
-    dddd = USDeathsPerWeek[c];
+    d = USConfirmed[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
+    dd = USDeaths[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
+    ddd = USPerWeek[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
+    dddd = USDeathsPerWeek[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
 
     var optsState = getOpts(`${c} (n=${Number(totals[i].total).toLocaleString()})`, 550,300);
     optsState.plugins.push(legendAsTooltipPlugin());
@@ -421,7 +421,7 @@ function prepUSAData(data) {
     optsState = newSeries(optsState, "Deaths per week", "deaths", "red");
     optsState = newSeries(optsState, "Cases per week", "casesperday", "blue", [1,0], true, 1);
 
-    optsState.id = c;
+    optsState.id = c.replace(/ /g, '');
     var data = [dateList, d, dddd, ddd];
     //if (!isMobile || currentNum > 8000 || c == "Australia") {
     let country_uplot = new uPlot(optsState, data, plotDiv);
@@ -430,6 +430,118 @@ function prepUSAData(data) {
   }
 
 }
+
+function prepAUSData(data) {
+  var AUSConfirmed = {};
+  var AUSDeaths = {};
+  var AUSPerWeek = {};
+  var AUSDeathsPerWeek = {};
+
+  var dataConfirmed = data[0].split('\n');
+  var dataDeaths = data[1].split('\n');
+
+  colDateStart = 4;
+  numCols = dataConfirmed[0].split(',').length
+  dateList = dataConfirmed[0].split(',').slice(colDateStart, numCols).map(a => {return new Date(a).getTime()/1000}); 
+ 
+  // Combine Dataset
+  for (var i=0; i<dataConfirmed.length; i++) {
+    rowConfirmed_ = dataConfirmed[i].split(",")
+    rowDeaths_ = dataDeaths[i].split(",")
+    state = rowConfirmed_[0].replace("Australian Capital Territory", "ACT")
+    if (rowConfirmed_[1] != "Australia") {
+      continue;
+    }
+         
+    if (state in AUSConfirmed) {
+      for (var ee=colDateStart; ee<numCols; ee++) {
+        AUSConfirmed[state][ee-colDateStart] = Number(AUSConfirmed[state][ee-colDateStart]) + Number(rowConfirmed_[ee])
+      }
+    } else {
+      AUSConfirmed[state] = rowConfirmed_.slice(colDateStart, numCols);
+    }
+
+    if (state in AUSDeaths) {
+      for (var ee=colDateStart; ee<numCols; ee++) {
+        AUSDeaths[state][ee-colDateStart] = Number(AUSDeaths[state][ee-colDateStart]) + Number(rowDeaths_[ee+1])
+      }
+    } else {
+      AUSDeaths[state] = rowDeaths_.slice(colDateStart+1, numCols+1);
+    }
+
+  }
+
+  // Create weekly totals
+  //console.log(AUSDeaths)
+  totals = [];
+  totalForecast = []
+  
+  for (c in AUSConfirmed) {
+    d = AUSConfirmed[c];
+    totals.push({state: c, total:Number(d[d.length-1])})
+    AUSPerWeek[c] = [];
+    for (var ee=0; ee<numCols-colDateStart; ee++) {
+      AUSPerWeek[c][ee] = AUSConfirmed[c][ee] - AUSConfirmed[c][ee-7 < 0 ? 0 : ee-7];
+    }
+
+    AUSDeathsPerWeek[c] = [];
+    for (var ee=0; ee<numCols-colDateStart; ee++) {
+      AUSDeathsPerWeek[c][ee] = AUSDeaths[c][ee] - AUSDeaths[c][ee-7 < 0 ? 0 : ee-7];
+    }
+
+    // Forecast
+    delta_ = Number((Number(d[d.length-1])-d[d.length-4]) / 3)
+    for (var ee=0; ee<9; ee++) {
+      if (d[d.length-1] > 0) { 
+        forecast_ = Number(Number(d[d.length-1])+(delta_ * ee)) 
+        if (!isNaN(forecast_)) {
+          totalForecast[ee] = forecast_ + Number(totalForecast[ee] | 0)
+        }
+      }
+    }
+
+  }
+
+  //Sort totals
+  totals.sort(function(a, b) {
+    return ((a.total > b.total) ? -1 : ((a.total == b.total) ? 0 : 1));
+  });
+
+  // Chart
+  plotDiv = $(`#ausPlot`)[0]
+
+  for (var i=0; i<totals.length; i++) {
+
+    if (isNaN(totals[i].total)) {
+      continue;
+    }
+
+    c = totals[i].state;
+    d = AUSConfirmed[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
+    dd = AUSDeaths[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
+    ddd = AUSPerWeek[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
+    dddd = AUSDeathsPerWeek[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
+
+    var optsState = getOpts(`${c} (n=${Number(totals[i].total).toLocaleString()})`, 550,300);
+    optsState.plugins.push(legendAsTooltipPlugin());
+  
+    optsState = newSeries(optsState, c + " Confirmed");
+    optsState = newSeries(optsState, "Deaths per week", "deaths", "red");
+    optsState = newSeries(optsState, "Cases per week", "casesperday", "blue", [1,0], true, 1);
+
+    optsState.id = c.replace(/ /g, '');
+    var data = [dateList, d, dddd, ddd];
+    console.log(data)
+    
+    //data = [[1585746000, 1585750000], [0, 2], [1, 3], [3, 4]]
+    //if (!isMobile || currentNum > 8000 || c == "Australia") {
+    let country_uplot = new uPlot(optsState, data, plotDiv);
+    //country_uplot.axes[2].show = false;
+    //country_uplot.redraw();
+  }
+
+}
+
 
 function prepPlotData(data) {
 
@@ -654,10 +766,10 @@ function prepPlotData(data) {
     }
 
     let c = totals[i].country;
-    var d = countryConfirmedData[c];
-    var dd = countryDeathData[c]
-    var ddd = countryConfirmedPerDayData[c];
-    var dddd = countryDeathsPerWeek[c];
+    var d = countryConfirmedData[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
+    var dd = countryDeathData[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
+    var ddd = countryConfirmedPerDayData[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
+    var dddd = countryDeathsPerWeek[c].map(function(x) {if (isNaN(x)) {return null} else {return Number(x)}});
 
     // Normalise
     var ii = 0;
@@ -724,7 +836,7 @@ function prepPlotData(data) {
       //  var flag = countryCode.toUpperCase().replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))
       //  $(`#${c}flag`).append(flag);
       //}
-      optsCountry.id = c;
+      optsCountry.id = c.replace(/ /g, '');
       var data = [dateList, d, dddd, ddd, forecastCases]
 
       if (!isMobile || currentNum > 8000 || c == "Australia") {
@@ -769,7 +881,7 @@ function makePlotNormalised(countryNormalised) {
     };
 
   //optsGlobal2.axes[1].values = (u, vals, space) => {return vals.map(v => Math.pow(10, Number(v).toFixed(2)));}
-  var data = [Array.from(Array(365).keys())]
+  var data = [Array.from(Array(256).keys())]
   var countryArrayHide = ["China", "Germany", "France"]
   var countryArray = ["US", "Singapore", "Sweden", "Spain", "United Kingdom", "Turkey", "Australia"]
   var countries = Object.keys(countryNormalised)

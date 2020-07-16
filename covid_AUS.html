@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>COVID VIZ - USA</title>
+    <title>COVID VIZ - Australia</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <link rel="stylesheet" href="https://leeoniya.github.io/uPlot/src/uPlot.css">
     <script src="https://leeoniya.github.io/uPlot/dist/uPlot.iife.js"></script>
@@ -20,12 +20,12 @@
         <div class="small">Data source: Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE) <a href="https://github.com/CSSEGISandData/COVID-19">[link]</a></div>
         <a href="/viz/covid">World charts</a>
         <br>
-        <a href="/viz/covid_AUS">Australia State charts</a>
+        <a href="/viz/covid_USA">USA State charts</a>
       </p>
 
 	  <hr> 
       <hr>
-      <div class="d-flex flex-wrap" id="usaPlot"></div>
+      <div class="d-flex flex-wrap" id="ausPlot"></div>
     </main>
     <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
@@ -34,13 +34,13 @@
 
   <script>
     Promise.all([
-      fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv").then(res => {return res.text()}),
-      fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv").then(res => {return res.text()}),
+      fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv").then(res => {return res.text()}),
+      fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv").then(res => {return res.text()}),
     ])
     .then(data => {
-      prepUSAData(data);
+      prepAUSData(data);
     }).then(d=> {
-      $("#totals").append(`Today (est): <strong>${Number(totalForecast[0]).toLocaleString()}</strong>. +7days <strong>${Number(totalForecast[8]).toLocaleString()}</strong>`)
+      $("#totals").append(`Today (est): <strong>${Number(totalForecast[0]).toLocaleString()}</strong>. +7days <strong>${parseInt(Number(totalForecast[8])).toLocaleString()}</strong>`)
       
     }) 
   </script>

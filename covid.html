@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Panic. I have no TP.</title>
+    <title>COVID VIZ</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <link rel="stylesheet" href="https://leeoniya.github.io/uPlot/src/uPlot.css">
     <script src="https://leeoniya.github.io/uPlot/dist/uPlot.iife.js"></script>
@@ -18,9 +18,12 @@
       <p>
         <div id="totals"></div>
         <div class="small">Data source: Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE) <a href="https://github.com/CSSEGISandData/COVID-19">[link]</a></div>
-        <a href="/viz/covid_USA">USA State charts</a></p>
+        <a href="/viz/covid_USA">USA State charts</a>
+        <br>
+        <a href="/viz/covid_AUS">Australia State charts</a></p>
+      </p>
       <div id="globalPlot" align="center"></div>
-	  <hr> 
+    <hr> 
       <div id="normPlot" align="center"></div>
       <hr>
       <div id="auPlot" align="center"></div>
@@ -52,7 +55,7 @@
       
       dangerList.sort().reverse();
       for (var i=0; i<dangerList.length && i <10; i++) {
-        but = `<button class="btn btn-link p-0 small" style="vertical-align: unset;" onclick="scrollToCountry('${dangerList[i][1]}');"
+        but = `<button class="btn btn-link p-0 small" style="vertical-align: unset;" onclick="scrollToCountry('${dangerList[i][1].replace(/ /g, '')}');"
         >goto</button>`
         $("#atrisk").append(`${dangerList[i][1]} - ${(dangerList[i][0] * 100).toFixed()}% ${but}<br>`)
       }
