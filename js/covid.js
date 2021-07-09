@@ -232,15 +232,15 @@ function getOpts(title_, width_ = 500, height_ = 250) {
         scale: 'confirmed',
         label: 'Cumulative cases',
         labelSize: 30,
-        size: 70,
+        size: 80,
         side: 3,
         grid: {show: true},
       },
       {
         scale: 'deaths',
         label: 'Deaths per week',
-        labelSize: 20,
-        size: 55,
+        labelSize: 18,
+        size: 52,
         side: 1,
         grid: {show: false},
         stroke: "red",
@@ -249,7 +249,7 @@ function getOpts(title_, width_ = 500, height_ = 250) {
         scale: 'casesperday',
         label: 'New confirmed cases per week',
         labelSize: 20,
-        size: 60,
+        size: 65,
         side: 1,
         grid: {show: false},
         stroke: "blue",
@@ -671,8 +671,14 @@ function prepPlotData(data) {
     // Weekly total
     countryConfirmedPerDayData[c] = [];
     for (var ee=0; ee<numCols-colDateStart; ee++) {
-      //countryConfirmedPerDayData[c][ee] = Number(countryConfirmedData[c][ee]) - (ee == 0 ? 0 : Number(countryConfirmedData[c][ee - 1]))
-      countryConfirmedPerDayData[c][ee] = countryConfirmedData[c][ee] - countryConfirmedData[c][ee-7 < 0 ? 0 : ee-7];
+
+      if ((countryConfirmedData[c][ee] - countryConfirmedData[c][ee-7]) < 0) {
+        countryConfirmedPerDayData[c][ee] = countryConfirmedPerDayData[c][ee-1]
+      } else {
+        countryConfirmedPerDayData[c][ee] = countryConfirmedData[c][ee] - countryConfirmedData[c][ee-7 < 0 ? 0 : ee-7];
+
+      }
+
     }
 
     countryDeathsPerWeek[c] = [];
@@ -776,7 +782,7 @@ function prepPlotData(data) {
     var d_norm = [];
     for (var ee=0; ee<d.length; ee++) {
       if (d[ee] > 999) {
-        d_norm.push(Number(d[ee]))
+        d_norm.push(Number(ddd[ee]))
       }
     }
 
@@ -862,16 +868,23 @@ function makePlotNormalised(countryNormalised) {
   //Normalised plot
   // GLOBAL PLOT
   plotDiv = $(`#normPlot`)[0]
-  var optsGlobal2 = getOpts('Cumulative cases per country in days since first reached 1000th case', 750, 750);
+  var optsGlobal2 = getOpts('Weekly confirmed cases per country', 900, 500);
   //optsGlobal2.height = 750;
   //optsGlobal2.width = 500;
+  delete optsGlobal2.axes[1];
   delete optsGlobal2.axes[2];
-  delete optsGlobal2.axes[3];
   delete optsGlobal2.scales['deaths'];
-  delete optsGlobal2.scales['casesperday'];
+  delete optsGlobal2.scales['confirmed'];
+
+  console.log(optsGlobal2)
+  optsGlobal2.axes[3]['side']=3;
+  optsGlobal2.axes[3]['stroke']='black';
+
+  //optsGlobal2.axes[1].
+  //delete optsGlobal2.scales['casesperday'];
   optsGlobal2.plugins.push(seriesPointsPlugin());
   optsGlobal2.scales['x'].time = false;
-  optsGlobal2.axes[0].label = "Days since 1000th case"
+  optsGlobal2.axes[0].label = "Weeks since 1000th case"
   optsGlobal2.lock = true;
   optsGlobal2.cursor = {
       focus: {
@@ -881,18 +894,18 @@ function makePlotNormalised(countryNormalised) {
     };
 
   //optsGlobal2.axes[1].values = (u, vals, space) => {return vals.map(v => Math.pow(10, Number(v).toFixed(2)));}
-  var data = [Array.from(Array(256).keys())]
+  var data = [Array.from(Array(countryNormalised["US"].length+21).keys())]
   var countryArrayHide = ["China", "Germany", "France"]
   var countryArray = ["US", "Singapore", "Sweden", "Spain", "United Kingdom", "Turkey", "Australia"]
   var countries = Object.keys(countryNormalised)
-  for (var i=0; i< Math.min(60,countries.length); i++) {
+  for (var i=0; i< Math.min(30,countries.length); i++) {
     c = countries[i]
     showCountry = !countryArrayHide.includes(c) & (countryArray.includes(c) || countryNormalised[c][countryNormalised[c].length-1] > 85000);
     data.push(countryNormalised[c]) //.map(Math.log10));
-    optsGlobal2 = newSeries(optsGlobal2, c, "confirmed", colors[i], [1,0], showCountry);
+    optsGlobal2 = newSeries(optsGlobal2, c, "casesperday", colors[i], [1,0], showCountry);
   }
 
-  optsGlobal2.series[0] = {label: 'Days since 1000th case'}
+  optsGlobal2.series[0] = {label: 'Cases per week'}
   let uplotNorm = new uPlot(optsGlobal2, data, plotDiv);
   $($(`#normPlot .uplot .u-legend`)[0]).css("width", screen.width > 750 ? "750px" : "500px") 
 }

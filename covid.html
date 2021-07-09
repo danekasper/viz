@@ -17,19 +17,22 @@
       <!--p.w-75=`Datatable with property Test`-->
       <p>
         <div id="totals"></div>
-        <div class="small">Data source: Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE) <a href="https://github.com/CSSEGISandData/COVID-19">[link]</a></div>
-        <a href="/viz/covid_USA">USA State charts</a>
+        <div class="small">Data sources: Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE) <a href="https://github.com/CSSEGISandData/COVID-19">[link]</a> <a href="https://linkinghub.elsevier.com/retrieve/pii/S1473309920301201">[link]</a>
+          JHU GovEx <a href="https://github.com/govex/COVID-19/tree/master/data_tables/vaccine_data">[link]</a>
+        </div>
+        <!--<a href="/viz/covid_USA">USA State charts</a>
         <br>
-        <a href="/viz/covid_AUS">Australia State charts</a></p>
+        <a href="/viz/covid_AUS">Australia State charts</a></p>-->
       </p>
       <div id="globalPlot" align="center"></div>
     <hr> 
+
+    <p class="loading">Loading... <span class="partloading" style="display:none">reticulating splines...</span></p> 
       <div id="normPlot" align="center"></div>
       <hr>
       <div id="auPlot" align="center"></div>
-      <hr>
-      <p>
-        <h6>Countries hotspots and most at risk of case increases
+      <p style="display:none" class="toload">
+        <h6 style="display:none" class="toload">Countries hotspots and most at risk of case increases
           <div class="small">*According to super simply linear model</div> </h6>
           <div id="atrisk"></div>
       </p>
@@ -41,6 +44,7 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
   
     <script>
+      
       Promise.all([
       fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv").then(res => {return res.text()}),
       fetch("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv").then(res => {return res.text()}),
@@ -48,6 +52,7 @@
       fetch("data/country-lockdown.csv").then(res => {return res.text()}),
     ])
     .then(data => {
+      $(".partloading").show()
       let ret = prepPlotData(data);
       setTimeout(() => makePlotNormalised(ret));
     }).then(d=> {
@@ -85,6 +90,9 @@
           <hr>`
         )
       }
+
+      $(".loading").hide();
+      $(".toload").show();
 
     }) 
   </script>
